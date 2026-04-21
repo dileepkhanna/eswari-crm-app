@@ -19,6 +19,9 @@ class ASEDashboardScreen extends StatefulWidget {
 
 class _ASEDashboardScreenState extends State<ASEDashboardScreen> {
   int _currentIndex = 0;
+  
+  // Callback functions to refresh tabs
+  VoidCallback? _refreshLeadsTab;
 
   String get userName =>
       '${widget.userData['first_name'] ?? ''} ${widget.userData['last_name'] ?? ''}'.trim();
@@ -34,8 +37,22 @@ class _ASEDashboardScreenState extends State<ASEDashboardScreen> {
       isManager: isManager,
       onNavigateToTab: (index) => setState(() => _currentIndex = index),
     ),
-    ASECallsTab(userData: widget.userData, isManager: isManager),
-    ASELeadsTab(userData: widget.userData, isManager: isManager),
+    ASECallsTab(
+      userData: widget.userData,
+      isManager: isManager,
+      onLeadConverted: () {
+        // Trigger leads tab refresh
+        _refreshLeadsTab?.call();
+      },
+    ),
+    ASELeadsTab(
+      userData: widget.userData,
+      isManager: isManager,
+      onRefreshRequested: (callback) {
+        // Store the callback so calls tab can trigger it
+        _refreshLeadsTab = callback;
+      },
+    ),
     ASEAnnouncementsTab(userData: widget.userData),
     ASEMoreTab(userData: widget.userData, isManager: isManager),
   ];

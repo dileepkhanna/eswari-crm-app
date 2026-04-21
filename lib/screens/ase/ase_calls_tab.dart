@@ -14,8 +14,14 @@ import '../../services/api_service.dart';
 class ASECallsTab extends StatefulWidget {
   final Map<String, dynamic> userData;
   final bool isManager;
-  const ASECallsTab(
-      {super.key, required this.userData, required this.isManager});
+  final VoidCallback? onLeadConverted;
+  
+  const ASECallsTab({
+    super.key,
+    required this.userData,
+    required this.isManager,
+    this.onLeadConverted,
+  });
 
   @override
   State<ASECallsTab> createState() => _ASECallsTabState();
@@ -910,6 +916,7 @@ class _ASECallsTabState extends State<ASECallsTab>
       builder: (_) => _CallDetailSheet(
         call: call,
         onRefresh: _fetchCalls,
+        onLeadConverted: widget.onLeadConverted,
         onEdit: () {
           Navigator.pop(context); // Close detail sheet
           _showEditCallForm(call); // Open edit form
@@ -1564,12 +1571,14 @@ class _CallDetailSheet extends StatefulWidget {
   final VoidCallback onRefresh;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback? onLeadConverted;
   
   const _CallDetailSheet({
     required this.call,
     required this.onRefresh,
     required this.onEdit,
     required this.onDelete,
+    this.onLeadConverted,
   });
 
   @override
@@ -2201,15 +2210,16 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
       
       if (mounted) {
         if (res['success'] == true) {
-          setState(() {
-            widget.call['is_converted'] = true;
-            widget.call['converted_lead_id'] = res['data']?['lead_id']?.toString();
-          });
+          // Refresh calls list via callback
           widget.onRefresh();
+          
+          // Notify parent to refresh leads tab
+          widget.onLeadConverted?.call();
+          
           Navigator.pop(context); // Close detail sheet
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Successfully converted to lead! Lead ID: ${res['data']?['lead_id']}'),
+              content: Text('✓ Successfully converted to lead! Lead ID: ${res['data']?['lead_id']}'),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 3),
             ),

@@ -17,6 +17,10 @@ class EswariDashboardScreen extends StatefulWidget {
 
 class _EswariDashboardScreenState extends State<EswariDashboardScreen> {
   int _currentIndex = 0;
+  
+  // Callback functions to refresh tabs
+  VoidCallback? _refreshLeadsTab;
+  VoidCallback? _refreshTasksTab;
 
   String get userName =>
       '${widget.userData['first_name'] ?? ''} ${widget.userData['last_name'] ?? ''}'.trim();
@@ -32,9 +36,34 @@ class _EswariDashboardScreenState extends State<EswariDashboardScreen> {
       isManager: isManager,
       onNavigateToTab: (index) => setState(() => _currentIndex = index),
     ),
-    EswariCallsTab(userData: widget.userData, isManager: isManager),
-    EswariLeadsTab(userData: widget.userData, isManager: isManager),
-    EswariTasksTab(userData: widget.userData, isManager: isManager),
+    EswariCallsTab(
+      userData: widget.userData,
+      isManager: isManager,
+      onLeadConverted: () {
+        // Trigger leads tab refresh
+        _refreshLeadsTab?.call();
+      },
+    ),
+    EswariLeadsTab(
+      userData: widget.userData,
+      isManager: isManager,
+      onRefreshRequested: (callback) {
+        // Store the callback so calls tab can trigger it
+        _refreshLeadsTab = callback;
+      },
+      onTaskConverted: () {
+        // Trigger tasks tab refresh
+        _refreshTasksTab?.call();
+      },
+    ),
+    EswariTasksTab(
+      userData: widget.userData,
+      isManager: isManager,
+      onRefreshRequested: (callback) {
+        // Store the callback so leads tab can trigger it
+        _refreshTasksTab = callback;
+      },
+    ),
     EswariProjectsTab(userData: widget.userData, isManager: isManager),
     EswariMoreTab(userData: widget.userData, isManager: isManager),
   ];

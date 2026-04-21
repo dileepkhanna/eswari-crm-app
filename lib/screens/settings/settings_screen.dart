@@ -260,9 +260,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
           value: _biometricEnabled,
           onChanged: (val) async {
             if (val) {
+              // Check if biometric is available first
+              final isAvailable = await BiometricService.isBiometricAvailable();
+              
+              if (!isAvailable) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Biometric authentication is not available on this device'),
+                      backgroundColor: Colors.orange,
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                }
+                return;
+              }
+              
               // Enable biometric - test authentication first
               final authenticated = await BiometricService.authenticate(
                 localizedReason: 'Authenticate to enable biometric lock',
+                useErrorDialogs: false,
+                stickyAuth: false,
               );
               
               if (authenticated) {
@@ -278,18 +296,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   );
                 }
               } else {
+                // Don't show error message - user likely just cancelled
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Authentication failed'),
-                      backgroundColor: Colors.red,
+                      content: Text('Authentication cancelled'),
+                      backgroundColor: Colors.grey,
                       duration: Duration(seconds: 2),
                     ),
                   );
                 }
               }
             } else {
-              // Disable biometric
+              // Disable biometric - no authentication needed
               await BiometricService.setBiometricEnabled(false);
               setState(() => _biometricEnabled = false);
               if (mounted) {

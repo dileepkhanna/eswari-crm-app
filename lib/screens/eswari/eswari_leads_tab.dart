@@ -13,7 +13,16 @@ import '../../services/api_service.dart';
 class EswariLeadsTab extends StatefulWidget {
   final Map<String, dynamic> userData;
   final bool isManager;
-  const EswariLeadsTab({super.key, required this.userData, required this.isManager});
+  final VoidCallback? onTaskConverted;
+  final Function(VoidCallback)? onRefreshRequested;
+  
+  const EswariLeadsTab({
+    super.key,
+    required this.userData,
+    required this.isManager,
+    this.onTaskConverted,
+    this.onRefreshRequested,
+  });
 
   @override
   State<EswariLeadsTab> createState() => _EswariLeadsTabState();
@@ -28,6 +37,16 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
 
   // Advanced filters
   String _statusFilter = '';
+
+  @override
+  void initState() {
+    super.initState();
+    // Register refresh callback with parent
+    widget.onRefreshRequested?.call(fetchLeads);
+    fetchLeads();
+    _fetchCreators();
+    _fetchProjects(); // Fetch projects for detail view
+  }
   String _requirementTypeFilter = '';
   String _bhkFilter = '';
   String _sourceFilter = '';
@@ -96,14 +115,6 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
 
   @override
   bool get wantKeepAlive => true;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchLeads();
-    _fetchCreators();
-    _fetchProjects(); // Fetch projects for detail view
-  }
   
   Future<void> _fetchProjects() async {
     setState(() => _loadingProjects = true);
@@ -188,7 +199,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
     }
   }
 
-  Future<void> _fetchLeads() async {
+  Future<void> fetchLeads() async {
     print('Fetching leads...'); // Debug
     setState(() => _loading = true);
     try {
@@ -251,7 +262,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
       _searchCtrl.clear();
       _currentPage = 1;
     });
-    _fetchLeads();
+    fetchLeads();
   }
   
   bool get _hasActiveFilters {
@@ -284,7 +295,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
                   : _leads.isEmpty
                       ? _buildEmpty()
                       : RefreshIndicator(
-                          onRefresh: _fetchLeads,
+                          onRefresh: fetchLeads,
                           color: _primary,
                           child: ListView.builder(
                             padding: const EdgeInsets.all(12),
@@ -335,7 +346,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
                         onPressed: () {
                           _searchCtrl.clear();
                           setState(() => _search = '');
-                          _fetchLeads();
+                          fetchLeads();
                         })
                     : null,
                 filled: true,
@@ -347,9 +358,9 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
               ),
               onChanged: (v) {
                 setState(() => _search = v);
-                if (v.isEmpty) _fetchLeads();
+                if (v.isEmpty) fetchLeads();
               },
-              onSubmitted: (_) => _fetchLeads(),
+              onSubmitted: (_) => fetchLeads(),
             ),
           ),
           const SizedBox(width: 8),
@@ -431,7 +442,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
             _endDateFilter = endDate;
             _currentPage = 1;
           });
-          _fetchLeads();
+          fetchLeads();
         },
         onClear: _clearFilters,
       ),
@@ -451,7 +462,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
             _sortBy = sortBy;
             _currentPage = 1;
           });
-          _fetchLeads();
+          fetchLeads();
         },
       ),
     );
@@ -578,7 +589,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
                 icon: const Icon(Icons.first_page_rounded),
                 onPressed: _currentPage > 1 ? () {
                   setState(() => _currentPage = 1);
-                  _fetchLeads();
+                  fetchLeads();
                 } : null,
                 iconSize: 20,
               ),
@@ -586,7 +597,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
                 icon: const Icon(Icons.chevron_left_rounded),
                 onPressed: _currentPage > 1 ? () {
                   setState(() => _currentPage--);
-                  _fetchLeads();
+                  fetchLeads();
                 } : null,
                 iconSize: 20,
               ),
@@ -605,7 +616,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
                 icon: const Icon(Icons.chevron_right_rounded),
                 onPressed: _currentPage < _totalPages ? () {
                   setState(() => _currentPage++);
-                  _fetchLeads();
+                  fetchLeads();
                 } : null,
                 iconSize: 20,
               ),
@@ -613,7 +624,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
                 icon: const Icon(Icons.last_page_rounded),
                 onPressed: _currentPage < _totalPages ? () {
                   setState(() => _currentPage = _totalPages);
-                  _fetchLeads();
+                  fetchLeads();
                 } : null,
                 iconSize: 20,
               ),
@@ -1095,7 +1106,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
             duration: Duration(seconds: errors.isEmpty ? 3 : 8),
           ),
         );
-        if (ok && imported > 0) _fetchLeads();
+        if (ok && imported > 0) fetchLeads();
       }
     } catch (e) {
       if (mounted) {
@@ -1346,7 +1357,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
           });
           // Small delay to ensure backend has processed the lead
           Future.delayed(const Duration(milliseconds: 500), () {
-            _fetchLeads();
+            fetchLeads();
           });
         },
       ),
@@ -1366,7 +1377,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
           });
           // Small delay to ensure backend has processed the update
           Future.delayed(const Duration(milliseconds: 500), () {
-            _fetchLeads();
+            fetchLeads();
           });
         },
       ),
@@ -1382,7 +1393,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
       builder: (_) => _LeadDetailSheet(
         lead: lead,
         projects: _projects, // Pass projects list to detail sheet
-        onRefresh: _fetchLeads,
+        onRefresh: fetchLeads,
         onEdit: () {
           Navigator.pop(context);
           _showEditLeadForm(lead);
@@ -1407,7 +1418,8 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
         projects: _projects,
         userData: widget.userData,
         onSuccess: () {
-          _fetchLeads(); // Refresh leads list
+          fetchLeads(); // Refresh leads list
+          widget.onTaskConverted?.call(); // Refresh tasks tab
         },
       ),
     );
@@ -1450,7 +1462,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
               backgroundColor: Colors.green,
             ),
           );
-          _fetchLeads();
+          fetchLeads();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -4634,3 +4646,5 @@ class _ConvertToTaskDialogState extends State<_ConvertToTaskDialog> {
     );
   }
 }
+
+

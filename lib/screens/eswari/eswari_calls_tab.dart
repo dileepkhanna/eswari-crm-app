@@ -15,8 +15,14 @@ import '../../services/api_service.dart';
 class EswariCallsTab extends StatefulWidget {
   final Map<String, dynamic> userData;
   final bool isManager;
-  const EswariCallsTab(
-      {super.key, required this.userData, required this.isManager});
+  final VoidCallback? onLeadConverted;
+  
+  const EswariCallsTab({
+    super.key,
+    required this.userData,
+    required this.isManager,
+    this.onLeadConverted,
+  });
 
   @override
   State<EswariCallsTab> createState() => _EswariCallsTabState();
@@ -80,7 +86,7 @@ class _EswariCallsTabState extends State<EswariCallsTab>
   @override
   void initState() {
     super.initState();
-    _fetchCalls();
+    fetchCalls();
     _fetchAssignees();
   }
   
@@ -156,7 +162,7 @@ class _EswariCallsTabState extends State<EswariCallsTab>
     super.dispose();
   }
 
-  Future<void> _fetchCalls() async {
+  Future<void> fetchCalls() async {
     setState(() => _loading = true);
     try {
       String url = '/customers/?page_size=500';  // Increased to show more calls
@@ -280,7 +286,7 @@ class _EswariCallsTabState extends State<EswariCallsTab>
       _search = '';
       _searchCtrl.clear();
     });
-    _fetchCalls();
+    fetchCalls();
   }
   
   bool get _hasActiveFilters {
@@ -467,7 +473,7 @@ class _EswariCallsTabState extends State<EswariCallsTab>
           ),
         );
         
-        if (ok && imported > 0) _fetchCalls();
+        if (ok && imported > 0) fetchCalls();
       }
     } catch (e) {
       if (mounted) {
@@ -908,7 +914,7 @@ class _EswariCallsTabState extends State<EswariCallsTab>
                         onPressed: () {
                           _searchCtrl.clear();
                           setState(() => _search = '');
-                          _fetchCalls();
+                          fetchCalls();
                         })
                     : null,
                 filled: true,
@@ -920,9 +926,9 @@ class _EswariCallsTabState extends State<EswariCallsTab>
               ),
               onChanged: (v) {
                 setState(() => _search = v);
-                if (v.isEmpty) _fetchCalls();
+                if (v.isEmpty) fetchCalls();
               },
-              onSubmitted: (_) => _fetchCalls(),
+              onSubmitted: (_) => fetchCalls(),
             ),
           ),
           const SizedBox(width: 8),
@@ -980,7 +986,7 @@ class _EswariCallsTabState extends State<EswariCallsTab>
                 : _calls.isEmpty
                     ? _buildEmpty()
                     : RefreshIndicator(
-                        onRefresh: _fetchCalls,
+                        onRefresh: fetchCalls,
                         color: _primary,
                         child: ListView.builder(
                           padding: const EdgeInsets.all(12),
@@ -1235,7 +1241,7 @@ class _EswariCallsTabState extends State<EswariCallsTab>
             _sortField = sortField;
             _sortDirection = sortDir;
           });
-          _fetchCalls();
+          fetchCalls();
         },
         onClear: _clearFilters,
       ),
@@ -1344,7 +1350,8 @@ class _EswariCallsTabState extends State<EswariCallsTab>
               BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => _CallDetailSheet(
         call: call,
-        onRefresh: _fetchCalls,
+        onRefresh: fetchCalls,
+        onLeadConverted: widget.onLeadConverted,
         onEdit: () {
           Navigator.pop(context); // Close detail sheet
           _showEditCallForm(call); // Open edit form
@@ -1368,7 +1375,7 @@ class _EswariCallsTabState extends State<EswariCallsTab>
               BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => _CallFormSheet(
         call: call,
-        onSaved: _fetchCalls,
+        onSaved: fetchCalls,
         userData: widget.userData,
       ),
     );
@@ -1411,7 +1418,7 @@ class _EswariCallsTabState extends State<EswariCallsTab>
               backgroundColor: Colors.green,
             ),
           );
-          _fetchCalls();
+          fetchCalls();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1441,7 +1448,7 @@ class _EswariCallsTabState extends State<EswariCallsTab>
           borderRadius:
               BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => _CallFormSheet(
-        onSaved: _fetchCalls,
+        onSaved: fetchCalls,
         userData: widget.userData,
       ),
     );
@@ -1889,6 +1896,7 @@ class _CallDetailSheet extends StatefulWidget {
   final VoidCallback onRefresh;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback? onLeadConverted;
   final bool isManager;
   final String Function(String) maskPhone;
   
@@ -1897,6 +1905,7 @@ class _CallDetailSheet extends StatefulWidget {
     required this.onRefresh,
     required this.onEdit,
     required this.onDelete,
+    this.onLeadConverted,
     required this.isManager,
     required this.maskPhone,
   });
@@ -2619,22 +2628,19 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
       
       if (mounted) {
         if (res['success'] == true) {
-          // Update local state
-          setState(() {
-            widget.call['is_converted'] = true;
-            widget.call['converted_lead_id'] = res['data']?['lead']?['id']?.toString();
-          });
-          
-          // Close detail sheet first
-          Navigator.pop(context);
-          
-          // Then refresh the list
+          // Refresh calls list via callback
           widget.onRefresh();
+          
+          // Notify parent to refresh leads tab
+          widget.onLeadConverted?.call();
+          
+          // Close detail sheet
+          Navigator.pop(context);
           
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Successfully converted to lead! Lead ID: ${res['data']?['lead']?['id']}'),
+              content: Text('✓ Successfully converted to lead! Lead ID: ${res['data']?['lead']?['id']}'),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 3),
             ),
@@ -3657,3 +3663,6 @@ class _FilterSheetState extends State<_FilterSheet> {
     );
   }
 }
+
+
+

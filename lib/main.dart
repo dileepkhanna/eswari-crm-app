@@ -9,9 +9,11 @@ import 'screens/biometric_lock_screen.dart';
 import 'services/auth_service.dart';
 import 'services/biometric_service.dart';
 import 'services/fcm_service.dart';
+import 'services/biometric_lock_manager.dart';
 import 'config/api_config.dart';
 import 'config/app_theme.dart';
 import 'providers/theme_provider.dart';
+import 'widgets/biometric_lock_wrapper.dart';
 import 'screens/home_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/manager/manager_dashboard_screen.dart';
@@ -196,7 +198,18 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     try {
       print('DEBUG: Starting _navigateToDashboard');
       final token = await AuthService.getAccessToken();
-      print('DEBUG: Got token: ${token?.substring(0, 20)}...');
+      
+      if (token == null || token.isEmpty) {
+        print('DEBUG: No token found, redirecting to login');
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+        return;
+      }
+      
+      print('DEBUG: Got token: ${token.substring(0, 20)}...');
 
       Map<String, dynamic>? userData;
 
@@ -230,6 +243,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
         if (response.statusCode == 200) {
           userData = jsonDecode(response.body);
+          print('DEBUG: Successfully fetched user profile');
         } else if (response.statusCode == 401) {
           // Refresh also failed — must login again
           print('DEBUG: Auth failed after refresh, logging out');
@@ -240,23 +254,67 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
             MaterialPageRoute(builder: (_) => const LoginScreen()),
           );
           return;
+        } else {
+          // Other error status (500, 404, etc.) — logout and go to login
+          print('DEBUG: Profile API failed with status ${response.statusCode}, logging out');
+          await AuthService.logout();
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+          );
+          return;
         }
-        // Any other status (500, etc.) — fall through to cached data
       } catch (e) {
-        // Network error / timeout — don't logout, use cached data
-        print('DEBUG: Network error (non-fatal, using cached data): $e');
-      }
-
-      // If we couldn't get fresh data, use cached role/company from storage
-      if (userData == null) {
-        print('DEBUG: Using cached user data from storage');
-        final role = await AuthService.getUserRole() ?? 'employee';
+        // Network error / timeout — logout and go to login for fresh install
+        print('DEBUG: Network error fetching profile: $e');
+        
+        // Check if we have cached role data - if not, this is likely a fresh install
+        final cachedRole = await AuthService.getUserRole();
+        if (cachedRole == null || cachedRole.isEmpty) {
+          print('DEBUG: No cached role found, treating as fresh install - logging out');
+          await AuthService.logout();
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+          );
+          return;
+        }
+        
+        // If we have cached data, use it (for offline mode)
+        print('DEBUG: Using cached user data for offline mode');
         final companyCode = await AuthService.getCompanyCode() ?? '';
-        userData = {'role': role, 'company': {'code': companyCode}};
+        userData = {'role': cachedRole, 'company': {'code': companyCode}};
       }
 
-      final role = userData['role'] ?? 'employee';
+      // If we still don't have userData, something went wrong
+      if (userData == null) {
+        print('DEBUG: No user data available, redirecting to login');
+        await AuthService.logout();
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+        return;
+      }
+
+      final role = userData['role'];
       final companyCode = userData['company']?['code']?.toString() ?? '';
+      
+      // Validate that we have essential data
+      if (role == null || role.isEmpty) {
+        print('DEBUG: Invalid user data (no role), redirecting to login');
+        await AuthService.logout();
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+        return;
+      }
+      
       print('DEBUG: User role: $role, company: $companyCode');
 
       // Initialize FCM now that we have a valid auth token
@@ -284,14 +342,31 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         }
       }
 
-      print('DEBUG: Navigating to dashboard');
+      print('DEBUG: Navigating to dashboard: ${dashboard.runtimeType}');
+      
+      // Wrap dashboard with biometric lock wrapper
+      final wrappedDashboard = BiometricLockWrapper(child: dashboard);
+      
+      // Check if should show biometric prompt (first time)
+      final shouldPrompt = await BiometricLockManager.shouldShowBiometricPrompt();
+      
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => dashboard),
+        MaterialPageRoute(builder: (_) => wrappedDashboard),
       );
+      
+      // Show biometric prompt after navigation if needed
+      if (shouldPrompt) {
+        Future.delayed(const Duration(milliseconds: 1000), () {
+          if (context.mounted) {
+            _showBiometricPrompt(context);
+          }
+        });
+      }
     } catch (e) {
-      // Unexpected error — still don't logout, just go to login
+      // Unexpected error — logout and go to login
       print('DEBUG: Unexpected error in _navigateToDashboard: $e');
+      await AuthService.logout();
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
@@ -520,6 +595,126 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
             ),
           ],
         ),
+      ),
+    );
+  }
+  
+  void _showBiometricPrompt(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1565C0).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.fingerprint_rounded,
+                color: Color(0xFF1565C0),
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Secure Your App',
+                style: TextStyle(fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enable biometric lock to protect your sensitive business data with fingerprint or face recognition.',
+              style: TextStyle(fontSize: 14, height: 1.5),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.security_rounded, color: Colors.blue, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Recommended for security',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue[900],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await BiometricLockManager.markBiometricPromptShown();
+              Navigator.pop(ctx);
+            },
+            child: const Text('Not Now'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              
+              // Try to enable biometric
+              final authenticated = await BiometricService.authenticate(
+                localizedReason: 'Authenticate to enable biometric lock',
+              );
+              
+              if (authenticated) {
+                await BiometricService.setBiometricEnabled(true);
+                await BiometricLockManager.markBiometricPromptShown();
+                
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('✓ Biometric lock enabled successfully'),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                }
+              } else {
+                await BiometricLockManager.markBiometricPromptShown();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Authentication failed. You can enable it later in Settings.'),
+                      backgroundColor: Colors.orange,
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                }
+              }
+            },
+            icon: const Icon(Icons.fingerprint_rounded, size: 20),
+            label: const Text('Enable'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1565C0),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+          ),
+        ],
       ),
     );
   }

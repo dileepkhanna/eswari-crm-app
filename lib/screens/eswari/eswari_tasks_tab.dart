@@ -12,7 +12,14 @@ import '../../services/api_service.dart';
 class EswariTasksTab extends StatefulWidget {
   final Map<String, dynamic> userData;
   final bool isManager;
-  const EswariTasksTab({super.key, required this.userData, required this.isManager});
+  final Function(VoidCallback)? onRefreshRequested;
+  
+  const EswariTasksTab({
+    super.key,
+    required this.userData,
+    required this.isManager,
+    this.onRefreshRequested,
+  });
 
   @override
   State<EswariTasksTab> createState() => _EswariTasksTabState();
@@ -47,6 +54,16 @@ class _EswariTasksTabState extends State<EswariTasksTab>
   List<Map<String, dynamic>> _users = [];
 
   static const Color _primary = Color(0xFF1565C0);
+
+  @override
+  void initState() {
+    super.initState();
+    // Register refresh callback with parent
+    widget.onRefreshRequested?.call(fetchTasks);
+    fetchTasks();
+    _fetchProjects();
+    _fetchUsers();
+  }
 
   final _statusColors = const {
     'in_progress':           Color(0xFF1976D2),
@@ -84,14 +101,6 @@ class _EswariTasksTabState extends State<EswariTasksTab>
   bool get wantKeepAlive => true;
 
   @override
-  void initState() {
-    super.initState();
-    _fetchTasks();
-    _fetchProjects();
-    _fetchUsers();
-  }
-
-  @override
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
@@ -123,7 +132,7 @@ class _EswariTasksTabState extends State<EswariTasksTab>
     } catch (_) {}
   }
 
-  Future<void> _fetchTasks() async {
+  Future<void> fetchTasks() async {
     setState(() => _loading = true);
     try {
       String url = '/tasks/?page=$_currentPage&page_size=$_pageSize';
@@ -176,7 +185,7 @@ class _EswariTasksTabState extends State<EswariTasksTab>
       _searchCtrl.clear();
       _currentPage = 1;
     });
-    _fetchTasks();
+    fetchTasks();
   }
   
   bool get _hasActiveFilters {
@@ -205,7 +214,7 @@ class _EswariTasksTabState extends State<EswariTasksTab>
               : _tasks.isEmpty
                   ? _buildEmpty()
                   : RefreshIndicator(
-                      onRefresh: _fetchTasks,
+                      onRefresh: fetchTasks,
                       color: _primary,
                       child: ListView.builder(
                         padding: const EdgeInsets.all(12),
@@ -242,7 +251,7 @@ class _EswariTasksTabState extends State<EswariTasksTab>
                         onPressed: () {
                           _searchCtrl.clear();
                           setState(() => _search = '');
-                          _fetchTasks();
+                          fetchTasks();
                         })
                     : null,
                 filled: true,
@@ -254,9 +263,9 @@ class _EswariTasksTabState extends State<EswariTasksTab>
               ),
               onChanged: (v) {
                 setState(() => _search = v);
-                if (v.isEmpty) _fetchTasks();
+                if (v.isEmpty) fetchTasks();
               },
-              onSubmitted: (_) => _fetchTasks(),
+              onSubmitted: (_) => fetchTasks(),
             ),
           ),
           const SizedBox(width: 8),
@@ -335,7 +344,7 @@ class _EswariTasksTabState extends State<EswariTasksTab>
             _endDateFilter = endDate;
             _currentPage = 1;
           });
-          _fetchTasks();
+          fetchTasks();
         },
         onClear: _clearFilters,
       ),
@@ -355,7 +364,7 @@ class _EswariTasksTabState extends State<EswariTasksTab>
             _sortBy = sortBy;
             _currentPage = 1;
           });
-          _fetchTasks();
+          fetchTasks();
         },
       ),
     );
@@ -478,7 +487,7 @@ class _EswariTasksTabState extends State<EswariTasksTab>
                 icon: Icon(Icons.first_page_rounded, color: theme.colorScheme.onSurface),
                 onPressed: _currentPage > 1 ? () {
                   setState(() => _currentPage = 1);
-                  _fetchTasks();
+                  fetchTasks();
                 } : null,
                 iconSize: 20,
               ),
@@ -486,7 +495,7 @@ class _EswariTasksTabState extends State<EswariTasksTab>
                 icon: Icon(Icons.chevron_left_rounded, color: theme.colorScheme.onSurface),
                 onPressed: _currentPage > 1 ? () {
                   setState(() => _currentPage--);
-                  _fetchTasks();
+                  fetchTasks();
                 } : null,
                 iconSize: 20,
               ),
@@ -505,7 +514,7 @@ class _EswariTasksTabState extends State<EswariTasksTab>
                 icon: Icon(Icons.chevron_right_rounded, color: theme.colorScheme.onSurface),
                 onPressed: _currentPage < _totalPages ? () {
                   setState(() => _currentPage++);
-                  _fetchTasks();
+                  fetchTasks();
                 } : null,
                 iconSize: 20,
               ),
@@ -513,7 +522,7 @@ class _EswariTasksTabState extends State<EswariTasksTab>
                 icon: Icon(Icons.last_page_rounded, color: theme.colorScheme.onSurface),
                 onPressed: _currentPage < _totalPages ? () {
                   setState(() => _currentPage = _totalPages);
-                  _fetchTasks();
+                  fetchTasks();
                 } : null,
                 iconSize: 20,
               ),
@@ -1038,7 +1047,7 @@ class _EswariTasksTabState extends State<EswariTasksTab>
                   ),
                 );
               }
-              _fetchTasks();
+              fetchTasks();
             } else {
               throw Exception('Failed to update status');
             }
@@ -1065,7 +1074,7 @@ class _EswariTasksTabState extends State<EswariTasksTab>
         projects: _projects,
         onSave: () {
           Navigator.pop(context);
-          _fetchTasks();
+          fetchTasks();
         },
       ),
     );
@@ -2119,3 +2128,6 @@ class _EditTaskDialogState extends State<_EditTaskDialog> {
     );
   }
 }
+
+
+

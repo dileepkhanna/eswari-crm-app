@@ -11,7 +11,14 @@ import '../../services/api_service.dart';
 class ASELeadsTab extends StatefulWidget {
   final Map<String, dynamic> userData;
   final bool isManager;
-  const ASELeadsTab({super.key, required this.userData, required this.isManager});
+  final Function(VoidCallback)? onRefreshRequested;
+  
+  const ASELeadsTab({
+    super.key,
+    required this.userData,
+    required this.isManager,
+    this.onRefreshRequested,
+  });
 
   @override
   State<ASELeadsTab> createState() => _ASELeadsTabState();
@@ -23,6 +30,15 @@ class _ASELeadsTabState extends State<ASELeadsTab>
   bool _loading = true;
   String _search = '';
   final _searchCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Register refresh callback with parent
+    widget.onRefreshRequested?.call(_fetchLeads);
+    _fetchLeads();
+    _fetchCreators();
+  }
 
   // Advanced filters
   String _statusFilter = '';
@@ -93,13 +109,6 @@ class _ASELeadsTabState extends State<ASELeadsTab>
 
   @override
   bool get wantKeepAlive => true;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchLeads();
-    _fetchCreators();
-  }
 
   @override
   void dispose() {
