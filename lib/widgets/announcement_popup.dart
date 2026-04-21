@@ -30,7 +30,14 @@ class _AnnouncementPopupState extends State<AnnouncementPopup> {
       print('DEBUG: Announcements response: $res');
       
       if (mounted && res['data'] != null) {
-        final announcements = res['data'] as List;
+        // Handle both paginated and non-paginated responses
+        var announcements = res['data'];
+        if (announcements is Map && announcements.containsKey('results')) {
+          announcements = announcements['results'] as List;
+        } else if (announcements is! List) {
+          announcements = [];
+        }
+        
         print('DEBUG: Found ${announcements.length} unread announcements');
         
         if (announcements.isNotEmpty) {

@@ -537,9 +537,10 @@ class _LeavesScreenState extends State<LeavesScreen> with SingleTickerProviderSt
     // Manager can delete employee leaves
     if (userRole == 'manager' && leave['user_role'] == 'employee') return true;
     
-    // Employee can only delete their own pending leaves
-    if (userRole == 'employee' && leaveUserId == currentUserId && leaveStatus == 'pending') {
-      return true;
+    // Employee CANNOT delete leaves in mobile app
+    // (They can only delete via web interface)
+    if (userRole == 'employee') {
+      return false;
     }
     
     return false;

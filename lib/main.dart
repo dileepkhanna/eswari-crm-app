@@ -197,73 +197,102 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       print('DEBUG: Starting _navigateToDashboard');
       final token = await AuthService.getAccessToken();
       print('DEBUG: Got token: ${token?.substring(0, 20)}...');
-      
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/accounts/profile/'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          print('DEBUG: Profile API timed out');
-          throw Exception('Profile API timeout');
-        },
-      );
 
-      print('DEBUG: Profile API response status: ${response.statusCode}');
+      Map<String, dynamic>? userData;
 
-      if (response.statusCode == 200) {
-        // Successfully got user data
-        final userData = jsonDecode(response.body);
-        final role = userData['role'] ?? 'employee';
-        final companyCode = userData['company']?['code']?.toString() ?? '';
-        print('DEBUG: User role: $role, company: $companyCode');
+      try {
+        var response = await http.get(
+          Uri.parse('${ApiConfig.baseUrl}/accounts/profile/'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ).timeout(const Duration(seconds: 10));
 
-        // Initialize FCM now that we have a valid auth token
-        FCMService.initialize().catchError((e) {
-          print('DEBUG: FCM init error (non-fatal): $e');
-        });
+        print('DEBUG: Profile API response status: ${response.statusCode}');
 
-        if (!mounted) return;
-
-        // Navigate to appropriate dashboard based on role and company
-        Widget dashboard;
-        if (role == 'admin' || role == 'hr') {
-          dashboard = AdminDashboardScreen(userData: userData);
-        } else {
-          // Route by company for manager/employee
-          final isASE = companyCode == 'ASE' || companyCode == 'ASE_TECH';
-          final isEswari = companyCode == 'ESWARI' || companyCode == 'ESWARI_GROUP';
-          
-          if (isASE) {
-            dashboard = ASEDashboardScreen(userData: userData);
-          } else if (isEswari) {
-            dashboard = EswariDashboardScreen(userData: userData);
-          } else if (role == 'manager') {
-            dashboard = ManagerDashboardScreen(userData: userData);
-          } else {
-            dashboard = EmployeeDashboardScreen(userData: userData);
+        // Token expired — try refresh
+        if (response.statusCode == 401) {
+          print('DEBUG: Token expired, attempting refresh...');
+          final refreshed = await AuthService.refreshToken();
+          if (refreshed) {
+            final newToken = await AuthService.getAccessToken();
+            response = await http.get(
+              Uri.parse('${ApiConfig.baseUrl}/accounts/profile/'),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $newToken',
+              },
+            ).timeout(const Duration(seconds: 10));
+            print('DEBUG: After refresh, status: ${response.statusCode}');
           }
         }
 
-        print('DEBUG: Navigating to dashboard');
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => dashboard),
-        );
-        return;
-      } else {
-        print('DEBUG: Profile API returned ${response.statusCode}');
-        throw Exception('Invalid response: ${response.statusCode}');
+        if (response.statusCode == 200) {
+          userData = jsonDecode(response.body);
+        } else if (response.statusCode == 401) {
+          // Refresh also failed — must login again
+          print('DEBUG: Auth failed after refresh, logging out');
+          await AuthService.logout();
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+          );
+          return;
+        }
+        // Any other status (500, etc.) — fall through to cached data
+      } catch (e) {
+        // Network error / timeout — don't logout, use cached data
+        print('DEBUG: Network error (non-fatal, using cached data): $e');
       }
-    } catch (e) {
-      // Token might be expired or invalid, logout and go to login
-      print('DEBUG: Error in _navigateToDashboard: $e');
-      await AuthService.logout();
+
+      // If we couldn't get fresh data, use cached role/company from storage
+      if (userData == null) {
+        print('DEBUG: Using cached user data from storage');
+        final role = await AuthService.getUserRole() ?? 'employee';
+        final companyCode = await AuthService.getCompanyCode() ?? '';
+        userData = {'role': role, 'company': {'code': companyCode}};
+      }
+
+      final role = userData['role'] ?? 'employee';
+      final companyCode = userData['company']?['code']?.toString() ?? '';
+      print('DEBUG: User role: $role, company: $companyCode');
+
+      // Initialize FCM now that we have a valid auth token
+      FCMService.initialize().catchError((e) {
+        print('DEBUG: FCM init error (non-fatal): $e');
+      });
+
       if (!mounted) return;
-      print('DEBUG: Navigating to LoginScreen after error');
+
+      Widget dashboard;
+      if (role == 'admin' || role == 'hr') {
+        dashboard = AdminDashboardScreen(userData: userData);
+      } else {
+        final isASE = companyCode == 'ASE' || companyCode == 'ASE_TECH';
+        final isEswari = companyCode == 'ESWARI' || companyCode == 'ESWARI_GROUP';
+
+        if (isASE) {
+          dashboard = ASEDashboardScreen(userData: userData);
+        } else if (isEswari) {
+          dashboard = EswariDashboardScreen(userData: userData);
+        } else if (role == 'manager') {
+          dashboard = ManagerDashboardScreen(userData: userData);
+        } else {
+          dashboard = EmployeeDashboardScreen(userData: userData);
+        }
+      }
+
+      print('DEBUG: Navigating to dashboard');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => dashboard),
+      );
+    } catch (e) {
+      // Unexpected error — still don't logout, just go to login
+      print('DEBUG: Unexpected error in _navigateToDashboard: $e');
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const LoginScreen()),

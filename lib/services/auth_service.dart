@@ -78,6 +78,10 @@ class AuthService {
     return await _storage.read(key: 'user_role');
   }
 
+  static Future<String?> getCompanyCode() async {
+    return await _storage.read(key: 'company_code');
+  }
+
   static Future<bool> isLoggedIn() async {
     final token = await _storage.read(key: 'access_token');
     return token != null;

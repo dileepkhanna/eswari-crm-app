@@ -197,6 +197,7 @@ class _ASEAnnouncementsTabState extends State<ASEAnnouncementsTab>
     final createdBy = item['created_by_name'] ?? 'Admin';
     final documentUrl = item['document_url'];
     final documentName = item['document_name'];
+    final isRead = item['is_read'] == true;
 
     final Color color = priority == 'high'
         ? const Color(0xFFC62828)
@@ -232,8 +233,8 @@ class _ASEAnnouncementsTabState extends State<ASEAnnouncementsTab>
                   Expanded(
                     child: Text(
                       title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
+                      style: TextStyle(
+                        fontWeight: isRead ? FontWeight.w500 : FontWeight.bold,
                         fontSize: 15,
                       ),
                       maxLines: 2,
@@ -256,6 +257,27 @@ class _ASEAnnouncementsTabState extends State<ASEAnnouncementsTab>
                         ),
                       ),
                     ),
+                  if (!isRead) ...[
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () async {
+                        await _markAsRead(id);
+                        _fetch();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: _primary.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.mark_email_read_outlined,
+                          color: _primary,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
               if (message.isNotEmpty) ...[
@@ -308,6 +330,17 @@ class _ASEAnnouncementsTabState extends State<ASEAnnouncementsTab>
                     _formatDate(date),
                     style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                   ),
+                  if (!isRead) ...[
+                    const Spacer(),
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: _primary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ],

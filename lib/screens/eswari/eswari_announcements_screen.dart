@@ -559,6 +559,20 @@ class _EswariAnnouncementsScreenState extends State<EswariAnnouncementsScreen> {
             ),
           ],
         ),
+        trailing: !isRead
+            ? IconButton(
+                icon: Icon(
+                  Icons.mark_email_read_outlined,
+                  color: theme.colorScheme.primary,
+                  size: 22,
+                ),
+                onPressed: () async {
+                  await _markAsRead(announcement['id']);
+                  _applyFilters();
+                },
+                tooltip: 'Mark as read',
+              )
+            : null,
         onTap: () {
           if (!isRead) _markAsRead(announcement['id']);
           _showAnnouncementDetail(announcement);
