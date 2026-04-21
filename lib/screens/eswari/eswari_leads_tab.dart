@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:excel/excel.dart' as xl;
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:open_file/open_file.dart';
 import '../../services/api_service.dart';
 
 class EswariLeadsTab extends StatefulWidget {
@@ -124,6 +126,51 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
+  }
+  
+  // Helper function to scan media and make file visible
+  Future<void> _scanMediaFile(String filePath) async {
+    if (Platform.isAndroid) {
+      try {
+        // Use media scanner to make file visible immediately
+        final result = await Process.run('am', [
+          'broadcast',
+          '-a',
+          'android.intent.action.MEDIA_SCANNER_SCAN_FILE',
+          '-d',
+          'file://$filePath'
+        ]);
+        print('Media scan result: ${result.stdout}');
+      } catch (e) {
+        print('Media scan error: $e');
+      }
+    }
+  }
+  
+  // Helper function to open file
+  Future<void> _openFile(String filePath, BuildContext context) async {
+    try {
+      final result = await OpenFile.open(filePath);
+      if (result.type != ResultType.done) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not open file: ${result.message}'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening file: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
   
   Future<void> _fetchCreators() async {
@@ -466,7 +513,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
         children: [
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: _downloadTemplate,
+              onPressed: _showTemplateOptions,
               icon: const Icon(Icons.file_download_rounded, size: 16),
               label: const Text('Template', style: TextStyle(fontSize: 13)),
               style: OutlinedButton.styleFrom(
@@ -496,7 +543,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
           const SizedBox(width: 8),
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: _exportToExcel,
+              onPressed: _showExportOptions,
               icon: const Icon(Icons.download_rounded, size: 16),
               label: Text('Export ($_totalCount)', style: const TextStyle(fontSize: 13)),
               style: OutlinedButton.styleFrom(
@@ -732,31 +779,64 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
   }
   
   // ── Download Template ──────────────────────────────────────────────────────
+  Future<void> _showTemplateOptions() async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Template Options',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.download_rounded, color: Color(0xFF6A1B9A)),
+              title: const Text('Download'),
+              subtitle: const Text('Save template to device'),
+              onTap: () {
+                Navigator.pop(context);
+                _downloadTemplate();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.share_rounded, color: Color(0xFF6A1B9A)),
+              title: const Text('Share'),
+              subtitle: const Text('Share template file'),
+              onTap: () {
+                Navigator.pop(context);
+                _shareTemplate();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _downloadTemplate() async {
     try {
       final excel = xl.Excel.createExcel();
+      
       final sheet = excel['Template'];
 
+      // Only required fields: Name and Phone
       final headers = [
-        'Company Name*', 'Contact Person*', 'Email', 'Phone*', 'Website',
-        'Industry*', 'Services', 'Budget', 'Status', 'Priority',
-        'Marketing Goals', 'Notes'
+        'Name*', 'Phone*'
       ];
-      
       for (int i = 0; i < headers.length; i++) {
-        sheet.cell(xl.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
-            .value = xl.TextCellValue(headers[i]);
+        final cell = sheet.cell(xl.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
+        cell.value = xl.TextCellValue(headers[i]);
       }
-
-      final exampleRow = [
-        'Example Corp', 'John Doe', 'john@example.com', '9876543210',
-        'https://example.com', 'technology', 'SEO, Social Media Marketing',
-        '50000', 'new', 'medium', 'Increase brand awareness',
-        'Interested in monthly retainer'
-      ];
-      for (int j = 0; j < exampleRow.length; j++) {
-        sheet.cell(xl.CellIndex.indexByColumnRow(columnIndex: j, rowIndex: 1))
-            .value = xl.TextCellValue(exampleRow[j]);
+      
+      // Delete default Sheet1 AFTER creating our sheet
+      if (excel.tables.containsKey('Sheet1')) {
+        excel.delete('Sheet1');
       }
 
       Directory? dir;
@@ -770,16 +850,42 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
       }
 
       final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-      final filePath = '${dir!.path}/ase_leads_template_$timestamp.xlsx';
+      final fileName = 'eswari_leads_template_$timestamp.xlsx';
+      final filePath = '${dir!.path}/$fileName';
       final fileBytes = excel.save();
       if (fileBytes == null) throw Exception('Failed to encode Excel file');
       File(filePath).writeAsBytesSync(fileBytes);
 
+      // Scan media to make file visible immediately
+      await _scanMediaFile(filePath);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Template saved to Downloads folder'),
+          SnackBar(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white, size: 20),
+                    SizedBox(width: 8),
+                    Text('Template downloaded successfully!', 
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text('📁 ${dir.path}', style: const TextStyle(fontSize: 11)),
+                Text('📄 $fileName', style: const TextStyle(fontSize: 11)),
+              ],
+            ),
             backgroundColor: Colors.green,
+            duration: const Duration(seconds: 6),
+            action: SnackBarAction(
+              label: 'VIEW',
+              textColor: Colors.white,
+              onPressed: () => _openFile(filePath, context),
+            ),
           ),
         );
       }
@@ -787,8 +893,51 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Template download error: $e'),
-              backgroundColor: Colors.red),
+            content: Text('Template download error: $e'), 
+            backgroundColor: Colors.red
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _shareTemplate() async {
+    try {
+      final excel = xl.Excel.createExcel();
+      
+      final sheet = excel['Template'];
+
+      // Only required fields: Name and Phone
+      final headers = [
+        'Name*', 'Phone*'
+      ];
+      for (int i = 0; i < headers.length; i++) {
+        final cell = sheet.cell(xl.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
+        cell.value = xl.TextCellValue(headers[i]);
+      }
+      
+      // Delete default Sheet1 AFTER creating our sheet
+      if (excel.tables.containsKey('Sheet1')) {
+        excel.delete('Sheet1');
+      }
+
+      final dir = await getTemporaryDirectory();
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final fileName = 'eswari_leads_template_$timestamp.xlsx';
+      final filePath = '${dir.path}/$fileName';
+      final fileBytes = excel.save();
+      if (fileBytes == null) throw Exception('Failed to encode Excel file');
+      File(filePath).writeAsBytesSync(fileBytes);
+
+      await Share.shareXFiles(
+        [XFile(filePath)],
+        subject: 'Eswari Leads Import Template',
+        text: 'Use this template to import leads into Eswari CRM',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Share error: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -810,73 +959,197 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
       final excel = xl.Excel.decodeBytes(bytes);
 
       final leads = <Map<String, dynamic>>[];
-      for (final table in excel.tables.values) {
+      
+      // Process the Template sheet
+      for (final tableName in excel.tables.keys) {
+        final table = excel.tables[tableName];
+        if (table == null) continue;
+        
+        print('Processing sheet: $tableName with ${table.rows.length} rows');
+        
         for (int i = 1; i < table.rows.length; i++) {
           final row = table.rows[i];
-          final companyName = row.length > 0 ? (row[0]?.value?.toString() ?? '') : '';
-          final contactPerson = row.length > 1 ? (row[1]?.value?.toString() ?? '') : '';
-          final email = row.length > 2 ? (row[2]?.value?.toString() ?? '') : '';
-          final phone = row.length > 3 ? (row[3]?.value?.toString() ?? '') : '';
           
-          if (companyName.isEmpty || phone.isEmpty) continue;
+          // Skip empty rows
+          if (row.isEmpty) continue;
+          
+          // Check if all cells are empty
+          bool allEmpty = true;
+          for (final cell in row) {
+            if (cell?.value != null && cell!.value.toString().trim().isNotEmpty) {
+              allEmpty = false;
+              break;
+            }
+          }
+          if (allEmpty) continue;
+          
+          final name = row.length > 0 ? (row[0]?.value?.toString().trim() ?? '') : '';
+          var phone = row.length > 1 ? (row[1]?.value?.toString().trim() ?? '') : '';
+          
+          // Remove .0 from phone numbers (Excel treats numbers as floats)
+          if (phone.endsWith('.0')) {
+            phone = phone.substring(0, phone.length - 2);
+          }
+          
+          print('Row $i: Name = "$name", Phone = "$phone"');
+          
+          // Skip if required fields are empty or example data
+          if (name.isEmpty || phone.isEmpty || name == 'Example Name') continue;
           
           leads.add({
-            'company_name': companyName,
-            'contact_person': contactPerson,
-            'email': email,
+            'name': name,  // Map to 'name' field for Lead model
             'phone': phone,
-            'website': row.length > 4 ? (row[4]?.value?.toString() ?? '') : '',
-            'industry': row.length > 5 ? (row[5]?.value?.toString() ?? 'other') : 'other',
-            'budget_amount': row.length > 7 ? (row[7]?.value?.toString() ?? '') : '',
-            'status': row.length > 8 ? (row[8]?.value?.toString() ?? 'new') : 'new',
-            'priority': row.length > 9 ? (row[9]?.value?.toString() ?? 'medium') : 'medium',
-            'marketing_goals': row.length > 10 ? (row[10]?.value?.toString() ?? '') : '',
-            'notes': row.length > 11 ? (row[11]?.value?.toString() ?? '') : '',
-            'service_interests': [],
-            'has_website': false,
-            'has_social_media': false,
+            // Optional fields with defaults
+            'email': '',
+            'address': '',
+            'requirement_type': 'apartment',
+            'bhk_requirement': '2',
+            'budget_min': 0,
+            'budget_max': 0,
+            'preferred_location': '',
+            'status': 'new',
+            'source': 'website',
+            'description': '',
+            'follow_up_date': null,
           });
+          print('Added lead: ${leads.last}');
         }
         break;
       }
 
+      print('Total leads to import: ${leads.length}');
+
       if (leads.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No valid rows found in file.')),
+            const SnackBar(
+              content: Text('No valid rows found. Please ensure:\n• Name and Phone columns have values\n• You are using the Template sheet\n• Remove or modify the example row'),
+              duration: Duration(seconds: 5),
+              backgroundColor: Colors.orange,
+            ),
           );
         }
         return;
       }
 
-      final res = await ApiService.post('/ase-leads/bulk_import/', {'leads': leads});
+      // Show loading indicator
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text('Importing ${leads.length} leads...'),
+              ],
+            ),
+            duration: const Duration(seconds: 30),
+          ),
+        );
+      }
+
+      final res = await ApiService.post('/leads/bulk_import/', {'leads': leads});
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        
         final ok = res['success'] == true;
         final imported = res['data']?['imported'] ?? 0;
         final errors = res['data']?['errors'] ?? [];
-        final msg = ok
-            ? 'Imported $imported leads${errors.isNotEmpty ? ' (${errors.length} skipped)' : ''}'
-            : 'Import failed: ${res['data']?['detail'] ?? 'Unknown error'}';
+        
+        String msg;
+        if (ok) {
+          if (errors.isEmpty) {
+            msg = '✅ Successfully imported $imported leads!';
+          } else {
+            // Show detailed error information
+            final errorDetails = (errors as List).take(3).map((e) {
+              if (e is Map) {
+                final company = e['company_name'] ?? e['phone'] ?? 'Unknown';
+                final reason = e['error'] ?? 'Unknown error';
+                return '• $company: $reason';
+              }
+              return '• $e';
+            }).join('\n');
+            
+            msg = '✅ Imported $imported leads\n⚠️ ${errors.length} skipped:\n$errorDetails';
+            if (errors.length > 3) {
+              msg += '\n... and ${errors.length - 3} more';
+            }
+          }
+        } else {
+          msg = '❌ Import failed: ${res['data']?['detail'] ?? 'Unknown error'}';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(msg),
             backgroundColor: ok ? Colors.green : Colors.red,
+            duration: Duration(seconds: errors.isEmpty ? 3 : 8),
           ),
         );
-        if (ok) _fetchLeads();
+        if (ok && imported > 0) _fetchLeads();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Import error: $e'),
-              backgroundColor: Colors.red),
+              content: Text('Import error: $e\n\nPlease check:\n• File format is correct\n• Name and Phone columns have values\n• Remove the example row before importing'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 6)),
         );
       }
     }
   }
 
   // ── Export to Excel ────────────────────────────────────────────────────────
+  Future<void> _showExportOptions() async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Export Options',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.download_rounded, color: Color(0xFF2E7D32)),
+              title: const Text('Download'),
+              subtitle: Text('Save $_totalCount leads to device'),
+              onTap: () {
+                Navigator.pop(context);
+                _exportToExcel();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.share_rounded, color: Color(0xFF2E7D32)),
+              title: const Text('Share'),
+              subtitle: Text('Share $_totalCount leads file'),
+              onTap: () {
+                Navigator.pop(context);
+                _shareExport();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _exportToExcel() async {
     try {
       // Fetch all pages
@@ -899,11 +1172,6 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
       }
 
       final excel = xl.Excel.createExcel();
-      
-      // Delete default Sheet1
-      if (excel.tables.containsKey('Sheet1')) {
-        excel.delete('Sheet1');
-      }
       
       final sheet = excel['Leads'];
 
@@ -943,6 +1211,11 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
               .value = xl.TextCellValue(row[j].toString());
         }
       }
+      
+      // Delete default Sheet1 AFTER creating our sheet
+      if (excel.tables.containsKey('Sheet1')) {
+        excel.delete('Sheet1');
+      }
 
       Directory? dir;
       if (Platform.isAndroid) {
@@ -974,6 +1247,88 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
           SnackBar(
               content: Text('Export error: $e'),
               backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+  
+  Future<void> _shareExport() async {
+    try {
+      // Fetch all pages
+      final allLeads = <Map<String, dynamic>>[];
+      int currentPage = 1;
+      bool hasMore = true;
+
+      while (hasMore) {
+        final res = await ApiService.get('/leads/?page=$currentPage&page_size=100');
+        if (res['data'] != null) {
+          final results = res['data']['results'] as List;
+          allLeads.addAll(results.cast<Map<String, dynamic>>());
+          hasMore = res['data']['next'] != null;
+          currentPage++;
+        } else {
+          break;
+        }
+      }
+
+      final excel = xl.Excel.createExcel();
+      final sheet = excel['Leads'];
+
+      final headers = [
+        'Company', 'Contact', 'Email', 'Phone', 'Website', 'Industry',
+        'Budget', 'Status', 'Priority', 'Goals', 'Notes', 'Created'
+      ];
+      for (int i = 0; i < headers.length; i++) {
+        final cell = sheet.cell(xl.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
+        cell.value = xl.TextCellValue(headers[i]);
+      }
+
+      for (int i = 0; i < allLeads.length; i++) {
+        final lead = allLeads[i];
+        final rowData = [
+          lead['company_name'] ?? '',
+          lead['contact_person'] ?? '',
+          lead['email'] ?? '',
+          lead['phone'] ?? '',
+          lead['website'] ?? '',
+          lead['industry'] ?? '',
+          lead['budget_amount']?.toString() ?? '',
+          lead['status'] ?? '',
+          lead['priority'] ?? '',
+          lead['marketing_goals'] ?? '',
+          lead['notes'] ?? '',
+          lead['created_at'] != null
+              ? DateFormat('yyyy-MM-dd').format(DateTime.parse(lead['created_at']))
+              : '',
+        ];
+
+        for (int j = 0; j < rowData.length; j++) {
+          sheet.cell(xl.CellIndex.indexByColumnRow(columnIndex: j, rowIndex: i + 1))
+              .value = xl.TextCellValue(rowData[j]);
+        }
+      }
+      
+      // Delete default Sheet1 AFTER creating our sheet
+      if (excel.tables.containsKey('Sheet1')) {
+        excel.delete('Sheet1');
+      }
+
+      final dir = await getTemporaryDirectory();
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final filePath = '${dir.path}/eswari_leads_export_$timestamp.xlsx';
+      final fileBytes = excel.save();
+      if (fileBytes == null) throw Exception('Failed to encode Excel file');
+      File(filePath).writeAsBytesSync(fileBytes);
+
+      await Share.shareXFiles(
+        [XFile(filePath)],
+        subject: 'Eswari Leads Export',
+        text: 'Exported ${allLeads.length} leads from Eswari CRM',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Share error: $e'), backgroundColor: Colors.red),
         );
       }
     }

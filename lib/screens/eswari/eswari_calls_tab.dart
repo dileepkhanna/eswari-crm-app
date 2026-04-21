@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:excel/excel.dart' as xl;
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -308,13 +309,12 @@ class _EswariCallsTabState extends State<EswariCallsTab>
 
       final customers = <Map<String, dynamic>>[];
       
-      // Process only the Template sheet (skip Instructions sheet)
+      // Process the Template sheet
       for (final tableName in excel.tables.keys) {
-        // Skip Instructions sheet
-        if (tableName.toLowerCase() == 'instructions') continue;
-        
         final table = excel.tables[tableName];
         if (table == null) continue;
+        
+        print('Processing sheet: $tableName with ${table.rows.length} rows');
         
         // Skip header row (index 0) and start from row 1
         for (int i = 1; i < table.rows.length; i++) {
@@ -323,12 +323,29 @@ class _EswariCallsTabState extends State<EswariCallsTab>
           // Skip empty rows
           if (row.isEmpty) continue;
           
+          // Check if all cells are empty
+          bool allEmpty = true;
+          for (final cell in row) {
+            if (cell?.value != null && cell!.value.toString().trim().isNotEmpty) {
+              allEmpty = false;
+              break;
+            }
+          }
+          if (allEmpty) continue;
+          
           // Extract phone (required field)
           final phoneCell = row.length > 0 ? row[0] : null;
-          final phone = phoneCell?.value?.toString().trim() ?? '';
+          var phone = phoneCell?.value?.toString().trim() ?? '';
           
-          // Skip if phone is empty
-          if (phone.isEmpty) continue;
+          // Remove .0 from phone numbers (Excel treats numbers as floats)
+          if (phone.endsWith('.0')) {
+            phone = phone.substring(0, phone.length - 2);
+          }
+          
+          print('Row $i: Phone = "$phone"');
+          
+          // Skip if phone is empty or is the example placeholder
+          if (phone.isEmpty || phone == '+1234567890') continue;
           
           // Extract optional fields
           final nameCell = row.length > 1 ? row[1] : null;
@@ -337,27 +354,43 @@ class _EswariCallsTabState extends State<EswariCallsTab>
           final notesCell = row.length > 2 ? row[2] : null;
           final notes = notesCell?.value?.toString().trim() ?? '';
           
-          // Build customer object
+          // Build customer object with assigned_to field
+          // Auto-assign to current user if they are employee or manager
+          int? assignedTo;
+          final userRole = widget.userData['role'];
+          if (userRole == 'employee' || userRole == 'manager') {
+            assignedTo = widget.userData['id'];
+          }
+          
           final customer = <String, dynamic>{
             'phone': phone,
+            'call_status': 'pending',  // Default status
+            'assigned_to': assignedTo,  // Auto-assign based on role
           };
           
           if (name.isNotEmpty) customer['name'] = name;
           if (notes.isNotEmpty) customer['notes'] = notes;
           
           customers.add(customer);
+          print('Added customer: $customer');
         }
         
         // Only process first data sheet
         break;
       }
 
+      print('Total customers to import: ${customers.length}');
+      
+      // Debug: Print what we're sending
+      print('Sending to API: ${customers.take(3).toList()}');
+
       if (customers.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('No valid rows found. Please ensure:\n• Phone column has values\n• You are using the Template sheet'),
-              duration: Duration(seconds: 4),
+              content: Text('No valid rows found. Please ensure:\n• Phone column has values\n• You are using the Template sheet\n• Remove or modify the example row'),
+              duration: Duration(seconds: 5),
+              backgroundColor: Colors.orange,
             ),
           );
         }
@@ -390,12 +423,16 @@ class _EswariCallsTabState extends State<EswariCallsTab>
       final res = await ApiService.post(
           '/customers/bulk_import/', {'customers': customers});
       
+      // Debug: Print the full response
+      print('API Response: $res');
+      
       if (mounted) {
         // Clear loading indicator
         ScaffoldMessenger.of(context).clearSnackBars();
         
         final ok = res['success'] == true;
-        final imported = res['data']?['imported'] ?? 0;
+        // Backend returns 'created' not 'imported'
+        final imported = res['data']?['created'] ?? res['data']?['imported'] ?? 0;
         final errors = res['data']?['errors'] as List? ?? [];
         
         String msg;
@@ -403,7 +440,20 @@ class _EswariCallsTabState extends State<EswariCallsTab>
           if (errors.isEmpty) {
             msg = '✅ Successfully imported $imported customers!';
           } else {
-            msg = '✅ Imported $imported customers\n⚠️ ${errors.length} skipped (duplicates or errors)';
+            // Show detailed error information
+            final errorDetails = errors.take(3).map((e) {
+              if (e is Map) {
+                final phone = e['phone'] ?? 'Unknown';
+                final reason = e['error'] ?? 'Unknown error';
+                return '• $phone: $reason';
+              }
+              return '• $e';
+            }).join('\n');
+            
+            msg = '✅ Imported $imported customers\n⚠️ ${errors.length} skipped:\n$errorDetails';
+            if (errors.length > 3) {
+              msg += '\n... and ${errors.length - 3} more';
+            }
           }
         } else {
           msg = '❌ Import failed: ${res['data']?['detail'] ?? 'Unknown error'}';
@@ -413,7 +463,7 @@ class _EswariCallsTabState extends State<EswariCallsTab>
           SnackBar(
             content: Text(msg),
             backgroundColor: ok ? Colors.green : Colors.red,
-            duration: const Duration(seconds: 5),
+            duration: Duration(seconds: errors.isEmpty ? 3 : 8),
           ),
         );
         
@@ -423,28 +473,63 @@ class _EswariCallsTabState extends State<EswariCallsTab>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Import error: $e\n\nPlease check:\n• File format is correct\n• Phone column has values'),
+              content: Text('Import error: $e\n\nPlease check:\n• File format is correct\n• Phone column has values\n• Remove the example row before importing'),
               backgroundColor: Colors.red,
-              duration: const Duration(seconds: 5)),
+              duration: const Duration(seconds: 6)),
         );
       }
     }
   }
 
   // ── Download Template ──────────────────────────────────────────────────────
+  Future<void> _showTemplateOptions() async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Template Options',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.download_rounded, color: Color(0xFF6A1B9A)),
+              title: const Text('Download'),
+              subtitle: const Text('Save template to device'),
+              onTap: () {
+                Navigator.pop(context);
+                _downloadTemplate();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.share_rounded, color: Color(0xFF6A1B9A)),
+              title: const Text('Share'),
+              subtitle: const Text('Share template file'),
+              onTap: () {
+                Navigator.pop(context);
+                _shareTemplate();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _downloadTemplate() async {
     try {
       final excel = xl.Excel.createExcel();
       
-      // Delete default Sheet1
-      if (excel.tables.containsKey('Sheet1')) {
-        excel.delete('Sheet1');
-      }
-      
       // Create Template sheet
       final sheet = excel['Template'];
 
-      // Header row with instructions
+      // Header row
       final headers = [
         'Phone*', 'Name', 'Notes'
       ];
@@ -454,42 +539,10 @@ class _EswariCallsTabState extends State<EswariCallsTab>
         final cell = sheet.cell(xl.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
         cell.value = xl.TextCellValue(headers[i]);
       }
-
-      // Add example row
-      final exampleRow = [
-        '+1234567890',
-        'John Doe',
-        'Interested in services',
-      ];
-      for (int j = 0; j < exampleRow.length; j++) {
-        sheet.cell(xl.CellIndex.indexByColumnRow(columnIndex: j, rowIndex: 1))
-            .value = xl.TextCellValue(exampleRow[j]);
-      }
-
-      // Add instructions sheet
-      final instructionsSheet = excel['Instructions'];
-      final instructions = [
-        ['Eswari Group Calls Import Template'],
-        [''],
-        ['Required Fields:'],
-        ['- Phone: Phone number (REQUIRED - must be unique)'],
-        [''],
-        ['Optional Fields:'],
-        ['- Name: Customer name'],
-        ['- Notes: Any additional notes'],
-        [''],
-        ['Instructions:'],
-        ['1. Fill in customer data in the Template sheet'],
-        ['2. Phone number is required for each row'],
-        ['3. Name and Notes are optional'],
-        ['4. Save the file and import it in the app'],
-      ];
-
-      for (int i = 0; i < instructions.length; i++) {
-        for (int j = 0; j < instructions[i].length; j++) {
-          instructionsSheet.cell(xl.CellIndex.indexByColumnRow(columnIndex: j, rowIndex: i))
-              .value = xl.TextCellValue(instructions[i][j]);
-        }
+      
+      // Delete default Sheet1 AFTER creating our sheet
+      if (excel.tables.containsKey('Sheet1')) {
+        excel.delete('Sheet1');
       }
 
       // Save to Downloads directory
@@ -554,7 +607,97 @@ class _EswariCallsTabState extends State<EswariCallsTab>
     }
   }
 
+  Future<void> _shareTemplate() async {
+    try {
+      final excel = xl.Excel.createExcel();
+      
+      // Create Template sheet
+      final sheet = excel['Template'];
+
+      // Header row
+      final headers = [
+        'Phone*', 'Name', 'Notes'
+      ];
+      
+      // Add headers
+      for (int i = 0; i < headers.length; i++) {
+        final cell = sheet.cell(xl.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
+        cell.value = xl.TextCellValue(headers[i]);
+      }
+      
+      // Delete default Sheet1 AFTER creating our sheet
+      if (excel.tables.containsKey('Sheet1')) {
+        excel.delete('Sheet1');
+      }
+
+      // Save to temporary directory for sharing
+      final dir = await getTemporaryDirectory();
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final fileName = 'eswari_calls_template_$timestamp.xlsx';
+      final filePath = '${dir.path}/$fileName';
+      final fileBytes = excel.save();
+      if (fileBytes == null) throw Exception('Failed to encode Excel file');
+      File(filePath).writeAsBytesSync(fileBytes);
+
+      // Share the file
+      await Share.shareXFiles(
+        [XFile(filePath)],
+        subject: 'Eswari Calls Import Template',
+        text: 'Use this template to import calls into Eswari CRM',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Share error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   // ── Export to Excel ────────────────────────────────────────────────────────
+  Future<void> _showExportOptions() async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Export Options',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.download_rounded, color: Color(0xFF2E7D32)),
+              title: const Text('Download'),
+              subtitle: Text('Save ${_calls.length} calls to device'),
+              onTap: () {
+                Navigator.pop(context);
+                _exportToExcel();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.share_rounded, color: Color(0xFF2E7D32)),
+              title: const Text('Share'),
+              subtitle: Text('Share ${_calls.length} calls file'),
+              onTap: () {
+                Navigator.pop(context);
+                _shareExport();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _exportToExcel() async {
     try {
       final excel = xl.Excel.createExcel();
@@ -651,6 +794,64 @@ class _EswariCallsTabState extends State<EswariCallsTab>
           SnackBar(
               content: Text('Export error: $e'),
               backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _shareExport() async {
+    try {
+      final excel = xl.Excel.createExcel();
+      
+      final sheet = excel['Calls'];
+      
+      // Headers
+      final headers = ['Phone', 'Name', 'Notes', 'Created At'];
+      for (int i = 0; i < headers.length; i++) {
+        final cell = sheet.cell(xl.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
+        cell.value = xl.TextCellValue(headers[i]);
+      }
+      
+      // Data rows
+      for (int i = 0; i < _calls.length; i++) {
+        final call = _calls[i];
+        final rowData = [
+          call['phone'] ?? '',
+          call['name'] ?? '',
+          call['notes'] ?? '',
+          call['created_at'] != null 
+            ? DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(call['created_at']))
+            : '',
+        ];
+        
+        for (int j = 0; j < rowData.length; j++) {
+          sheet.cell(xl.CellIndex.indexByColumnRow(columnIndex: j, rowIndex: i + 1))
+              .value = xl.TextCellValue(rowData[j]);
+        }
+      }
+      
+      // Save to temporary directory for sharing
+      final dir = await getTemporaryDirectory();
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final fileName = 'eswari_calls_export_$timestamp.xlsx';
+      final filePath = '${dir.path}/$fileName';
+      final fileBytes = excel.save();
+      if (fileBytes == null) throw Exception('Failed to encode Excel file');
+      File(filePath).writeAsBytesSync(fileBytes);
+
+      // Share the file
+      await Share.shareXFiles(
+        [XFile(filePath)],
+        subject: 'Eswari Calls Export',
+        text: 'Exported ${_calls.length} calls from Eswari CRM',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Share error: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -961,7 +1162,7 @@ class _EswariCallsTabState extends State<EswariCallsTab>
         children: [
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: _downloadTemplate,
+              onPressed: _showTemplateOptions,
               icon: const Icon(Icons.file_download_rounded, size: 16),
               label: const Text('Template', style: TextStyle(fontSize: 13)),
               style: OutlinedButton.styleFrom(
@@ -991,7 +1192,7 @@ class _EswariCallsTabState extends State<EswariCallsTab>
           const SizedBox(width: 8),
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: _exportToExcel,
+              onPressed: _showExportOptions,
               icon: const Icon(Icons.download_rounded, size: 16),
               label: const Text('Export', style: TextStyle(fontSize: 13)),
               style: OutlinedButton.styleFrom(
