@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
 import '../../services/biometric_service.dart';
+import '../../services/fcm_service.dart';
 import '../../providers/theme_provider.dart';
 import '../login_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -211,9 +212,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: 'Push Notifications',
             subtitle: 'Receive push notifications',
             value: _pushNotifications,
-            onChanged: (val) {
+            onChanged: (val) async {
               setState(() => _pushNotifications = val);
-              _saveSettings();
+              await _saveSettings();
+              if (val) {
+                // Re-register FCM token
+                await FCMService.initialize();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('✓ Push notifications enabled'),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              } else {
+                // Unregister FCM token so no more notifications
+                await FCMService.unregisterToken();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Push notifications disabled'),
+                      backgroundColor: Colors.orange,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              }
             },
           ),
         ],

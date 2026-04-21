@@ -5,7 +5,7 @@ import 'eswari_leads_tab.dart';
 import 'eswari_tasks_tab.dart';
 import 'eswari_projects_tab.dart';
 import 'eswari_more_tab.dart';
-import '../../widgets/announcement_popup.dart';
+import '../../widgets/announcement_notification_banner.dart';
 
 class EswariDashboardScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -58,7 +58,7 @@ class _EswariDashboardScreenState extends State<EswariDashboardScreen> {
       body: Stack(
         children: [
           IndexedStack(index: _currentIndex, children: _tabs),
-          const AnnouncementPopup(), // Add announcement popup
+          const AnnouncementNotificationBanner(), // In-app notification banner
         ],
       ),
       bottomNavigationBar: _buildBottomNav(context),

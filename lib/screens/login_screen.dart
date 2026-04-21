@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
+import '../services/fcm_service.dart';
 import '../screens/home_screen.dart';
 import '../screens/admin/admin_dashboard_screen.dart';
 import '../screens/manager/manager_dashboard_screen.dart';
@@ -94,6 +95,11 @@ class _LoginScreenState extends State<LoginScreen>
       final role = user['role'];
 
       print('DEBUG LOGIN: User role: $role');
+
+      // Initialize FCM now that user is authenticated (token can be registered)
+      FCMService.initialize().catchError((e) {
+        print('DEBUG LOGIN: FCM init error (non-fatal): $e');
+      });
 
       // company_info is the full object {id, name, code, logo_url} inside user
       // company field is just the integer ID

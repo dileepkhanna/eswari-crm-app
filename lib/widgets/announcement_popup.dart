@@ -25,9 +25,14 @@ class _AnnouncementPopupState extends State<AnnouncementPopup> {
     if (_hasShown) return; // Only show once per session
     
     try {
+      print('DEBUG: Fetching unread announcements...');
       final res = await ApiService.get('${ApiConfig.announcements}unread/');
+      print('DEBUG: Announcements response: $res');
+      
       if (mounted && res['data'] != null) {
         final announcements = res['data'] as List;
+        print('DEBUG: Found ${announcements.length} unread announcements');
+        
         if (announcements.isNotEmpty) {
           setState(() {
             _unreadAnnouncements = announcements;
@@ -36,12 +41,16 @@ class _AnnouncementPopupState extends State<AnnouncementPopup> {
           // Show popup after a short delay
           Future.delayed(const Duration(milliseconds: 500), () {
             if (mounted && !_hasShown) {
+              print('DEBUG: Showing announcement dialog');
               _showAnnouncementDialog();
             }
           });
         } else {
+          print('DEBUG: No unread announcements');
           setState(() => _loading = false);
         }
+      } else {
+        print('DEBUG: Response data is null');
       }
     } catch (e) {
       print('Error fetching unread announcements: $e');

@@ -2,10 +2,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'screens/login_screen.dart';
 import 'screens/biometric_lock_screen.dart';
 import 'services/auth_service.dart';
 import 'services/biometric_service.dart';
+import 'services/fcm_service.dart';
 import 'config/api_config.dart';
 import 'config/app_theme.dart';
 import 'providers/theme_provider.dart';
@@ -16,7 +19,20 @@ import 'screens/employee/employee_dashboard_screen.dart';
 import 'screens/ase/ase_dashboard_screen.dart';
 import 'screens/eswari/eswari_dashboard_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  try {
+    // Initialize Firebase only (no token registration yet — user not logged in)
+    await Firebase.initializeApp();
+    print('✅ Firebase initialized');
+    
+    // Set up background message handler only
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  } catch (e) {
+    print('❌ Error initializing Firebase: $e');
+  }
+  
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeProvider(),
@@ -204,6 +220,11 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         final role = userData['role'] ?? 'employee';
         final companyCode = userData['company']?['code']?.toString() ?? '';
         print('DEBUG: User role: $role, company: $companyCode');
+
+        // Initialize FCM now that we have a valid auth token
+        FCMService.initialize().catchError((e) {
+          print('DEBUG: FCM init error (non-fatal): $e');
+        });
 
         if (!mounted) return;
 

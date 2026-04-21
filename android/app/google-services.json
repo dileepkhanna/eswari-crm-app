@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1087045475011",
+    "project_id": "eswari-connects",
+    "storage_bucket": "eswari-connects.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1087045475011:android:6806f8df3d84616913e076",
+        "android_client_info": {
+          "package_name": "Eswari.connects"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBURiyeDwycS-k3Cq-6cx1jel0nqbHTRVU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1087045475011:android:d1ee5a70de0b922613e076",
+        "android_client_info": {
+          "package_name": "com.eswaricrm.eswari_crm_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBURiyeDwycS-k3Cq-6cx1jel0nqbHTRVU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

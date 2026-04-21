@@ -3,6 +3,7 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -13,6 +14,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -41,4 +43,18 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Core library desugaring for flutter_local_notifications
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    
+    // Import the Firebase BoM
+    implementation(platform("com.google.firebase:firebase-bom:34.12.0"))
+    
+    // Firebase Cloud Messaging
+    implementation("com.google.firebase:firebase-messaging")
+    
+    // Firebase Analytics (optional but recommended)
+    implementation("com.google.firebase:firebase-analytics")
 }
