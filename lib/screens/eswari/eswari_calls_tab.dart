@@ -90,11 +90,22 @@ class _EswariCallsTabState extends State<EswariCallsTab>
     _fetchAssignees();
   }
   
-  // Helper function to mask phone number for managers
-  String _maskPhone(String phone) {
+  // Helper function to mask phone number for managers (matching web app behavior)
+  String _maskPhone(String phone, Map<String, dynamic> call) {
+    // Non-managers see full phone numbers
     if (!widget.isManager) return phone;
+    
+    // Managers can see full phone numbers ONLY for calls they created
+    final createdById = call['created_by'];
+    final currentUserId = widget.userData['id'];
+    
+    if (createdById == currentUserId) {
+      return phone; // Manager created this call - show full number
+    }
+    
+    // Call created by someone else - mask the phone number
     if (phone.length <= 4) return '****';
-    return '${phone.substring(0, 2)}${'*' * (phone.length - 4)}${phone.substring(phone.length - 2)}';
+    return '${'*' * (phone.length - 4)}${phone.substring(phone.length - 4)}';
   }
   // Helper function to scan media and make file visible
   Future<void> _scanMediaFile(String filePath) async {
@@ -166,6 +177,9 @@ class _EswariCallsTabState extends State<EswariCallsTab>
     setState(() => _loading = true);
     try {
       String url = '/customers/?page_size=500';  // Increased to show more calls
+      
+      // NOTE: Managers see all team calls (backend handles filtering)
+      // Phone masking is applied based on created_by field
       
       // Apply filters
       if (_statusFilter != 'all') url += '&call_status=$_statusFilter';
@@ -875,19 +889,18 @@ class _EswariCallsTabState extends State<EswariCallsTab>
             _buildCallsView(),
           ],
         ),
-        // Floating Add Call Button (hidden for managers)
-        if (!widget.isManager)
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: FloatingActionButton.extended(
-              onPressed: _showAddCallForm,
-              backgroundColor: _primary,
-              icon: const Icon(Icons.phone_rounded, color: Colors.white),
-              label: const Text('Add Call', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-              elevation: 4,
-            ),
+        // Floating Add Call Button
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: FloatingActionButton.extended(
+            onPressed: _showAddCallForm,
+            backgroundColor: _primary,
+            icon: const Icon(Icons.phone_rounded, color: Colors.white),
+            label: const Text('Add Call', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            elevation: 4,
           ),
+        ),
       ],
     );
   }
@@ -1256,7 +1269,7 @@ class _EswariCallsTabState extends State<EswariCallsTab>
     final color = _statusColors[status] ?? _primary;
     final name = call['name'] ?? 'Unknown';
     final phone = call['phone'] ?? '';
-    final displayPhone = _maskPhone(phone); // Mask phone for managers
+    final displayPhone = _maskPhone(phone, call); // Mask phone for managers based on created_by
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -1898,7 +1911,7 @@ class _CallDetailSheet extends StatefulWidget {
   final VoidCallback onDelete;
   final VoidCallback? onLeadConverted;
   final bool isManager;
-  final String Function(String) maskPhone;
+  final String Function(String, Map<String, dynamic>) maskPhone;
   
   const _CallDetailSheet({
     required this.call,
@@ -2005,7 +2018,7 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
     final color = _statusColors[status] ?? _primary;
     final name = call['name'] ?? 'Unknown';
     final phone = call['phone'] ?? '';
-    final displayPhone = widget.maskPhone(phone); // Mask phone for managers
+    final displayPhone = widget.maskPhone(phone, call); // Mask phone for managers based on created_by
 
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
@@ -2057,41 +2070,39 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
                           ],
                         ),
                       ),
-                      // Action buttons (hidden for managers)
-                      if (!widget.isManager) ...[
+                      // Action buttons
+                      IconButton(
+                        icon: const Icon(Icons.edit_rounded, color: _primary),
+                        onPressed: widget.onEdit,
+                        tooltip: 'Edit',
+                      ),
+                      if (call['is_converted'] != true)
                         IconButton(
-                          icon: const Icon(Icons.edit_rounded, color: _primary),
-                          onPressed: widget.onEdit,
-                          tooltip: 'Edit',
+                          icon: const Icon(Icons.trending_up_rounded, color: Colors.green),
+                          onPressed: () => _showConvertDialog(call),
+                          tooltip: 'Convert to Lead',
                         ),
-                        if (call['is_converted'] != true)
-                          IconButton(
-                            icon: const Icon(Icons.trending_up_rounded, color: Colors.green),
-                            onPressed: () => _showConvertDialog(call),
-                            tooltip: 'Convert to Lead',
-                          ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_rounded, color: Colors.red),
-                          onPressed: widget.onDelete,
-                          tooltip: 'Delete',
-                        ),
-                      ],
+                      IconButton(
+                        icon: const Icon(Icons.delete_rounded, color: Colors.red),
+                        onPressed: widget.onDelete,
+                        tooltip: 'Delete',
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  // Quick Status Change (hidden for managers)
-                  if (!widget.isManager) _buildQuickStatusChange(call, theme, isDark),
-                  if (!widget.isManager) const SizedBox(height: 12),
-                  // Quick Action Buttons (Call & WhatsApp) - disabled for managers
+                  // Quick Status Change
+                  _buildQuickStatusChange(call, theme, isDark),
+                  const SizedBox(height: 12),
+                  // Quick Action Buttons (Call & WhatsApp)
                   Row(
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: widget.isManager ? null : () => _makePhoneCall(phone),
+                          onPressed: () => _makePhoneCall(phone),
                           icon: const Icon(Icons.phone, size: 18),
                           label: const Text('Call'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: widget.isManager ? Colors.grey : Colors.green,
+                            backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             shape: RoundedRectangleBorder(
@@ -2103,11 +2114,11 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
                       const SizedBox(width: 10),
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: widget.isManager ? null : () => _openWhatsApp(phone),
+                          onPressed: () => _openWhatsApp(phone),
                           icon: const Icon(Icons.chat, size: 18),
                           label: const Text('WhatsApp'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: widget.isManager ? Colors.grey : const Color(0xFF25D366),
+                            backgroundColor: const Color(0xFF25D366),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             shape: RoundedRectangleBorder(

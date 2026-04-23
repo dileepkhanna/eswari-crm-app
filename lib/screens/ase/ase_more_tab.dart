@@ -5,8 +5,10 @@ import '../settings/settings_screen.dart';
 import '../leaves/leaves_screen.dart';
 import '../holidays/holidays_screen.dart';
 import '../birthdays/birthday_calendar_screen.dart';
-import '../team/team_screen.dart';
 import '../eswari_group/eswari_group_screen.dart';
+import '../reports/reports_screen.dart';
+import '../activity/activity_screen.dart';
+import '../capital/capital_dashboard_screen.dart';
 
 class ASEMoreTab extends StatelessWidget {
   final Map<String, dynamic> userData;
@@ -89,16 +91,22 @@ class ASEMoreTab extends StatelessWidget {
 
   Widget _buildManagerSection(BuildContext context) {
     return _section('Manager Tools', [
-      _MoreItem(Icons.groups_rounded,       'My Team',    const Color(0xFF1565C0), () {
+      _MoreItem(Icons.bar_chart_rounded,    'Reports',    const Color(0xFF2E7D32), () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => TeamScreen(userData: userData),
+            builder: (_) => ReportsScreen(userData: userData, isManager: isManager),
           ),
         );
       }),
-      _MoreItem(Icons.bar_chart_rounded,    'Reports',    const Color(0xFF2E7D32), () {}),
-      _MoreItem(Icons.timeline_rounded,     'Activity',   const Color(0xFF6A1B9A), () {}),
+      _MoreItem(Icons.timeline_rounded,     'Activity',   const Color(0xFF6A1B9A), () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ActivityScreen(userData: userData, isManager: isManager),
+          ),
+        );
+      }),
       _MoreItem(Icons.pending_actions_rounded,'Leaves',   const Color(0xFFE65100), () {
         Navigator.push(
           context,
@@ -112,6 +120,17 @@ class ASEMoreTab extends StatelessWidget {
 
   Widget _buildMenuSection(BuildContext context) {
     return _section('General', [
+      _MoreItem(Icons.account_balance_rounded, 'Eswari Capital', const Color(0xFF00897B), () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CapitalDashboardScreen(
+              userData: userData,
+              isManager: isManager,
+            ),
+          ),
+        );
+      }),
       _MoreItem(Icons.business_center_rounded, 'Eswari Group', const Color(0xFF6A1B9A), () {
         Navigator.push(
           context,

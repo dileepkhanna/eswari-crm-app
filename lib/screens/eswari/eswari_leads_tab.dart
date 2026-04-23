@@ -241,7 +241,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
           _loading = false;
         });
         
-        print('State updated. Total leads: $_totalCount'); // Debug
+        print('State updated. Total leads: $_totalCount, Total pages: $_totalPages, Current page: $_currentPage'); // Debug
       }
     } catch (e) {
       print('Error fetching leads: $e'); // Debug
@@ -298,7 +298,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
                           onRefresh: fetchLeads,
                           color: _primary,
                           child: ListView.builder(
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 80), // Added bottom padding for FAB
                             itemCount: _leads.length,
                             itemBuilder: (_, i) => _buildLeadCard(_leads[i]),
                           ),
@@ -307,10 +307,10 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
             if (_totalPages > 1) _buildPagination(),
           ],
         ),
-        // Floating Add Lead Button
+        // Floating Add Lead Button - positioned higher to not cover pagination
         Positioned(
           right: 16,
-          bottom: 16,
+          bottom: 80, // Moved up to avoid covering pagination
           child: FloatingActionButton.extended(
             onPressed: _showAddLeadForm,
             backgroundColor: _primary,
@@ -358,9 +358,15 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
               ),
               onChanged: (v) {
                 setState(() => _search = v);
-                if (v.isEmpty) fetchLeads();
+                if (v.isEmpty) {
+                  setState(() => _currentPage = 1);
+                  fetchLeads();
+                }
               },
-              onSubmitted: (_) => fetchLeads(),
+              onSubmitted: (_) {
+                setState(() => _currentPage = 1);
+                fetchLeads();
+              },
             ),
           ),
           const SizedBox(width: 8),
@@ -466,10 +472,11 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
         },
       ),
     );
-  }
-
-  
+  }  
   Widget _buildActiveFilters() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     final filters = <String>[];
     if (_statusFilter.isNotEmpty) filters.add(_statusLabels[_statusFilter] ?? _statusFilter);
     if (_requirementTypeFilter.isNotEmpty) filters.add(_requirementTypeLabels[_requirementTypeFilter] ?? _requirementTypeFilter);
@@ -495,7 +502,7 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
     }
     
     return Container(
-      color: Colors.white,
+      color: theme.colorScheme.surface,
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       child: Wrap(
         spacing: 6,
@@ -517,8 +524,11 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
   }
   
   Widget _buildActionRow() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Container(
-      color: Colors.white,
+      color: theme.colorScheme.surface,
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       child: Row(
         children: [
@@ -572,74 +582,115 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
   }
   
   Widget _buildPagination() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      child: Column(
+      color: theme.colorScheme.surface,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), // Reduced from 12 to 8
+      margin: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'Showing ${(_currentPage - 1) * _pageSize + 1}–${(_currentPage * _pageSize).clamp(0, _totalCount)} of $_totalCount leads',
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          // Lead count - compact
+          Flexible(
+            flex: 2,
+            child: Text(
+              '${(_currentPage - 1) * _pageSize + 1}–${(_currentPage * _pageSize).clamp(0, _totalCount)} of $_totalCount',
+              style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant), // Reduced from 11 to 10
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.first_page_rounded),
-                onPressed: _currentPage > 1 ? () {
-                  setState(() => _currentPage = 1);
-                  fetchLeads();
-                } : null,
-                iconSize: 20,
-              ),
-              IconButton(
-                icon: const Icon(Icons.chevron_left_rounded),
-                onPressed: _currentPage > 1 ? () {
-                  setState(() => _currentPage--);
-                  fetchLeads();
-                } : null,
-                iconSize: 20,
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+          const SizedBox(width: 4), // Reduced from 8 to 4
+          // Pagination controls
+          Flexible(
+            flex: 3,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.first_page_rounded, color: _currentPage > 1 ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withOpacity(0.3)),
+                  onPressed: _currentPage > 1 ? () {
+                    setState(() => _currentPage = 1);
+                    fetchLeads();
+                  } : null,
+                  iconSize: 18, // Reduced from 20 to 18
+                  padding: const EdgeInsets.all(2), // Reduced from 4 to 2
+                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28), // Reduced from 32 to 28
                 ),
-                child: Text(
-                  'Page $_currentPage of $_totalPages',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                IconButton(
+                  icon: Icon(Icons.chevron_left_rounded, color: _currentPage > 1 ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withOpacity(0.3)),
+                  onPressed: _currentPage > 1 ? () {
+                    setState(() => _currentPage--);
+                    fetchLeads();
+                  } : null,
+                  iconSize: 18,
+                  padding: const EdgeInsets.all(2),
+                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.chevron_right_rounded),
-                onPressed: _currentPage < _totalPages ? () {
-                  setState(() => _currentPage++);
-                  fetchLeads();
-                } : null,
-                iconSize: 20,
-              ),
-              IconButton(
-                icon: const Icon(Icons.last_page_rounded),
-                onPressed: _currentPage < _totalPages ? () {
-                  setState(() => _currentPage = _totalPages);
-                  fetchLeads();
-                } : null,
-                iconSize: 20,
-              ),
-            ],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3), // Reduced from 8,4 to 6,3
+                  decoration: BoxDecoration(
+                    color: _primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '$_currentPage/$_totalPages',
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600), // Reduced from 11 to 10
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.chevron_right_rounded, color: _currentPage < _totalPages ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withOpacity(0.3)),
+                  onPressed: _currentPage < _totalPages ? () {
+                    setState(() => _currentPage++);
+                    fetchLeads();
+                  } : null,
+                  iconSize: 18,
+                  padding: const EdgeInsets.all(2),
+                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                ),
+                IconButton(
+                  icon: Icon(Icons.last_page_rounded, color: _currentPage < _totalPages ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withOpacity(0.3)),
+                  onPressed: _currentPage < _totalPages ? () {
+                    setState(() => _currentPage = _totalPages);
+                    fetchLeads();
+                  } : null,
+                  iconSize: 18,
+                  padding: const EdgeInsets.all(2),
+                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
+  // Helper function to mask phone number for managers (matching web app behavior)
+  String _maskPhone(String phone, Map<String, dynamic> lead) {
+    // Check if manager created this lead
+    final createdById = lead['created_by'];
+    final currentUserId = widget.userData['id'];
+    
+    if (createdById == currentUserId) {
+      return phone; // Manager created this lead - show full number
+    }
+    
+    // Lead created by someone else - mask the phone number
+    if (phone.length <= 4) return '****';
+    return '${'*' * (phone.length - 4)}${phone.substring(phone.length - 4)}';
+  }
+
   Widget _buildLeadCard(Map<String, dynamic> lead) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     final status  = lead['status'] ?? 'new';
     final color   = _statusColors[status] ?? _primary;
     final name = lead['name'] ?? 'Unknown Lead';
-    final phone   = widget.isManager ? _maskPhone(lead['phone'] ?? '') : (lead['phone'] ?? '');
+    final phone   = widget.isManager ? _maskPhone(lead['phone'] ?? '', lead) : (lead['phone'] ?? '');
     final requirementType = lead['requirement_type'] ?? '';
     final bhk = lead['bhk_requirement'] ?? '';
     final budgetMin = double.tryParse(lead['budget_min']?.toString() ?? '0') ?? 0.0;
@@ -780,13 +831,6 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
         onTap: () => _showLeadDetail(lead),
       ),
     );
-  }
-  
-  String _maskPhone(String phone) {
-    if (phone.length <= 4) return phone;
-    final start = phone.substring(0, 2);
-    final end = phone.substring(phone.length - 2);
-    return '$start${'*' * (phone.length - 4)}$end';
   }
   
   // ── Download Template ──────────────────────────────────────────────────────
@@ -1485,14 +1529,16 @@ class _EswariLeadsTabState extends State<EswariLeadsTab>
   }
 
   Widget _buildEmpty() {
+    final theme = Theme.of(context);
+    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.leaderboard_outlined, size: 64, color: Colors.grey[300]),
+          Icon(Icons.leaderboard_outlined, size: 64, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5)),
           const SizedBox(height: 16),
           Text('No leads found',
-              style: TextStyle(fontSize: 16, color: Colors.grey[500])),
+              style: TextStyle(fontSize: 16, color: theme.colorScheme.onSurfaceVariant)),
         ],
       ),
     );

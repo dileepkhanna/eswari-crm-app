@@ -11,15 +11,23 @@ class ApiService {
     String method = 'GET',
     Map<String, dynamic>? body,
   }) async {
+    print('🌐 API: ${method} ${ApiConfig.baseUrl}$endpoint');
+    
     String? token = await AuthService.getAccessToken();
     http.Response res = await _makeRequest(endpoint, method, body, token);
 
+    print('🌐 API: Response status: ${res.statusCode}');
+    print('🌐 API: Response body length: ${res.body.length}');
+    print('🌐 API: Response body preview: ${res.body.substring(0, res.body.length > 200 ? 200 : res.body.length)}');
+
     // Auto-refresh on 401
     if (res.statusCode == 401) {
+      print('🌐 API: Got 401, attempting token refresh...');
       final refreshed = await AuthService.refreshToken();
       if (refreshed) {
         token = await AuthService.getAccessToken();
         res = await _makeRequest(endpoint, method, body, token);
+        print('🌐 API: Retry response status: ${res.statusCode}');
       }
     }
 

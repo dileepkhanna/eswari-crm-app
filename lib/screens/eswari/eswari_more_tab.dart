@@ -5,7 +5,9 @@ import '../settings/settings_screen.dart';
 import '../leaves/leaves_screen.dart';
 import '../holidays/holidays_screen.dart';
 import '../birthdays/birthday_calendar_screen.dart';
-import '../team/team_screen.dart';
+import '../reports/reports_screen.dart';
+import '../activity/activity_screen.dart';
+import '../capital/capital_dashboard_screen.dart';
 import 'eswari_announcements_screen.dart';
 
 class EswariMoreTab extends StatelessWidget {
@@ -158,20 +160,45 @@ class EswariMoreTab extends StatelessWidget {
 
   Widget _buildManagerSection(BuildContext context) {
     return _section(context, 'Manager Tools', [
-      _MoreItem(Icons.groups_rounded, 'My Team', const Color(0xFF2196F3), () {
+      _MoreItem(Icons.bar_chart_rounded, 'Reports', const Color(0xFF4CAF50), () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => TeamScreen(userData: userData)),
+          MaterialPageRoute(
+            builder: (_) => ReportsScreen(
+              userData: userData,
+              isManager: isManager,
+            ),
+          ),
         );
       }),
-      _MoreItem(Icons.bar_chart_rounded, 'Reports', const Color(0xFF4CAF50), () {}),
-      _MoreItem(Icons.timeline_rounded, 'Activity', const Color(0xFF9C27B0), () {}),
+      _MoreItem(Icons.timeline_rounded, 'Activity', const Color(0xFF9C27B0), () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ActivityScreen(
+              userData: userData,
+              isManager: isManager,
+            ),
+          ),
+        );
+      }),
       _MoreItem(Icons.trending_up_rounded, 'Conversion Analytics', const Color(0xFFFF9800), () {}),
     ]);
   }
 
   Widget _buildMenuSection(BuildContext context) {
     return _section(context, 'General', [
+      _MoreItem(Icons.account_balance_rounded, 'Eswari Capital', const Color(0xFF00897B), () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CapitalDashboardScreen(
+              userData: userData,
+              isManager: isManager,
+            ),
+          ),
+        );
+      }),
       _MoreItem(Icons.campaign_rounded, 'Announcements', const Color(0xFF1565C0), () {
         Navigator.push(
           context,

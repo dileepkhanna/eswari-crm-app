@@ -27,15 +27,28 @@ class _TeamScreenState extends State<TeamScreen> {
   Future<void> _fetchTeamMembers() async {
     setState(() => _loading = true);
     try {
-      String url = '/accounts/team/';
+      String url = '/auth/users/';
       if (_search.isNotEmpty) {
         url += '?search=$_search';
       }
       
       final res = await ApiService.get(url);
       if (mounted) {
+        // Handle both paginated and non-paginated responses
+        List<dynamic> results;
+        if (res['data'] is List) {
+          // Non-paginated response (direct array)
+          results = List<dynamic>.from(res['data']);
+        } else if (res['data']?['results'] != null) {
+          // Paginated response
+          results = List<dynamic>.from(res['data']['results']);
+        } else {
+          // Fallback
+          results = [];
+        }
+        
         setState(() {
-          _teamMembers = res['data'] ?? [];
+          _teamMembers = results;
           _loading = false;
         });
       }

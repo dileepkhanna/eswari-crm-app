@@ -472,61 +472,81 @@ class _EswariTasksTabState extends State<EswariTasksTab>
     
     return Container(
       color: theme.colorScheme.surface,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      child: Column(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      margin: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'Showing ${(_currentPage - 1) * _pageSize + 1}–${(_currentPage * _pageSize).clamp(0, _totalCount)} of $_totalCount tasks',
-            style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+          // Task count - compact
+          Flexible(
+            flex: 2,
+            child: Text(
+              '${(_currentPage - 1) * _pageSize + 1}–${(_currentPage * _pageSize).clamp(0, _totalCount)} of $_totalCount',
+              style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: Icon(Icons.first_page_rounded, color: theme.colorScheme.onSurface),
-                onPressed: _currentPage > 1 ? () {
-                  setState(() => _currentPage = 1);
-                  fetchTasks();
-                } : null,
-                iconSize: 20,
-              ),
-              IconButton(
-                icon: Icon(Icons.chevron_left_rounded, color: theme.colorScheme.onSurface),
-                onPressed: _currentPage > 1 ? () {
-                  setState(() => _currentPage--);
-                  fetchTasks();
-                } : null,
-                iconSize: 20,
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+          const SizedBox(width: 4),
+          // Pagination controls
+          Flexible(
+            flex: 3,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.first_page_rounded, color: _currentPage > 1 ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withOpacity(0.3)),
+                  onPressed: _currentPage > 1 ? () {
+                    setState(() => _currentPage = 1);
+                    fetchTasks();
+                  } : null,
+                  iconSize: 18,
+                  padding: const EdgeInsets.all(2),
+                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                 ),
-                child: Text(
-                  'Page $_currentPage of $_totalPages',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _primary),
+                IconButton(
+                  icon: Icon(Icons.chevron_left_rounded, color: _currentPage > 1 ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withOpacity(0.3)),
+                  onPressed: _currentPage > 1 ? () {
+                    setState(() => _currentPage--);
+                    fetchTasks();
+                  } : null,
+                  iconSize: 18,
+                  padding: const EdgeInsets.all(2),
+                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                 ),
-              ),
-              IconButton(
-                icon: Icon(Icons.chevron_right_rounded, color: theme.colorScheme.onSurface),
-                onPressed: _currentPage < _totalPages ? () {
-                  setState(() => _currentPage++);
-                  fetchTasks();
-                } : null,
-                iconSize: 20,
-              ),
-              IconButton(
-                icon: Icon(Icons.last_page_rounded, color: theme.colorScheme.onSurface),
-                onPressed: _currentPage < _totalPages ? () {
-                  setState(() => _currentPage = _totalPages);
-                  fetchTasks();
-                } : null,
-                iconSize: 20,
-              ),
-            ],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: _primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '$_currentPage/$_totalPages',
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.chevron_right_rounded, color: _currentPage < _totalPages ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withOpacity(0.3)),
+                  onPressed: _currentPage < _totalPages ? () {
+                    setState(() => _currentPage++);
+                    fetchTasks();
+                  } : null,
+                  iconSize: 18,
+                  padding: const EdgeInsets.all(2),
+                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                ),
+                IconButton(
+                  icon: Icon(Icons.last_page_rounded, color: _currentPage < _totalPages ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withOpacity(0.3)),
+                  onPressed: _currentPage < _totalPages ? () {
+                    setState(() => _currentPage = _totalPages);
+                    fetchTasks();
+                  } : null,
+                  iconSize: 18,
+                  padding: const EdgeInsets.all(2),
+                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -544,7 +564,7 @@ class _EswariTasksTabState extends State<EswariTasksTab>
     
     final lead = task['lead_detail'] ?? {};
     final leadName = lead['name'] ?? 'Unknown Lead';
-    final leadPhone = widget.isManager ? _maskPhone(lead['phone'] ?? '') : (lead['phone'] ?? '');
+    final leadPhone = widget.isManager ? _maskPhone(lead['phone'] ?? '', task) : (lead['phone'] ?? '');
     
     final project = task['project_detail'];
     final projectName = project != null ? project['name'] ?? 'No Project' : 'No Project';
@@ -568,132 +588,155 @@ class _EswariTasksTabState extends State<EswariTasksTab>
           )
         ],
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: statusColor.withOpacity(isDark ? 0.2 : 0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(Icons.task_alt_rounded, color: statusColor, size: 22),
-        ),
-        title: Text(
-          leadName,
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: theme.colorScheme.onSurface),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (leadPhone.isNotEmpty)
-              Text(leadPhone, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(Icons.business_rounded, size: 12, color: theme.colorScheme.onSurfaceVariant),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    projectName,
-                    style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+      child: InkWell(
+        onTap: () => _showTaskDetail(task),
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              // Leading icon
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(isDark ? 0.2 : 0.1),
+                  shape: BoxShape.circle,
                 ),
-              ],
-            ),
-            if (assignedToName.isNotEmpty) ...[
-              const SizedBox(height: 2),
-              Row(
-                children: [
-                  Icon(Icons.person_outline_rounded, size: 12, color: theme.colorScheme.onSurfaceVariant),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Assigned: $assignedToName',
-                    style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                ],
+                child: Icon(Icons.task_alt_rounded, color: statusColor, size: 22),
               ),
-            ],
-            if (dueDate != null && dueDate.toString().isNotEmpty) ...[
-              const SizedBox(height: 2),
-              Row(
-                children: [
-                  Icon(Icons.event_rounded, size: 12, color: Colors.orange[700]),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Visit: ${dueDate.toString().split('T')[0]}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.orange[700],
-                      fontWeight: FontWeight.w500,
+              const SizedBox(width: 12),
+              // Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      leadName,
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: theme.colorScheme.onSurface),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: priorityColor.withOpacity(isDark ? 0.2 : 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: priorityColor.withOpacity(isDark ? 0.4 : 0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.flag_rounded, size: 10, color: priorityColor),
-                      const SizedBox(width: 3),
-                      Text(
-                        _priorityLabels[priority] ?? priority,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: priorityColor,
-                          fontWeight: FontWeight.w600,
+                    if (leadPhone.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(leadPhone, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+                    ],
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.business_rounded, size: 12, color: theme.colorScheme.onSurfaceVariant),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            projectName,
+                            style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
+                      ],
+                    ),
+                    if (assignedToName.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(Icons.person_outline_rounded, size: 12, color: theme.colorScheme.onSurfaceVariant),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              'Assigned: $assignedToName',
+                              style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
+                    if (dueDate != null && dueDate.toString().isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(Icons.event_rounded, size: 12, color: Colors.orange[700]),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Visit: ${dueDate.toString().split('T')[0]}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.orange[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: priorityColor.withOpacity(isDark ? 0.2 : 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: priorityColor.withOpacity(isDark ? 0.4 : 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.flag_rounded, size: 10, color: priorityColor),
+                          const SizedBox(width: 3),
+                          Text(
+                            _priorityLabels[priority] ?? priority,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: priorityColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Trailing status badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(isDark ? 0.2 : 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  _statusLabels[status] ?? status,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: statusColor,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ],
-            ),
-          ],
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(isDark ? 0.2 : 0.1),
-                borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(
-                _statusLabels[status] ?? status,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: statusColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-        onTap: () => _showTaskDetail(task),
       ),
     );
   }
   
-  String _maskPhone(String phone) {
-    if (phone.length <= 4) return phone;
-    final start = phone.substring(0, 2);
-    final end = phone.substring(phone.length - 2);
-    return '$start${'*' * (phone.length - 4)}$end';
+  // Helper function to mask phone number for managers (matching web app behavior)
+  String _maskPhone(String phone, Map<String, dynamic> task) {
+    // Get the lead detail from the task
+    final lead = task['lead_detail'] ?? {};
+    
+    // Check if manager created this lead
+    final createdById = lead['created_by'];
+    final currentUserId = widget.userData['id'];
+    
+    if (createdById == currentUserId) {
+      return phone; // Manager created this lead - show full number
+    }
+    
+    // Lead created by someone else - mask the phone number
+    if (phone.length <= 4) return '****';
+    return '${'*' * (phone.length - 4)}${phone.substring(phone.length - 4)}';
   }
 
   Widget _buildEmpty() {
@@ -803,7 +846,7 @@ class _EswariTasksTabState extends State<EswariTasksTab>
         
         final row = [
           lead['name'] ?? '',
-          widget.isManager ? _maskPhone(lead['phone'] ?? '') : (lead['phone'] ?? ''),
+          widget.isManager ? _maskPhone(lead['phone'] ?? '', task) : (lead['phone'] ?? ''),
           lead['email'] ?? '',
           _statusLabels[task['status']] ?? task['status'] ?? '',
           _priorityLabels[task['priority']] ?? task['priority'] ?? '',
@@ -940,7 +983,7 @@ class _EswariTasksTabState extends State<EswariTasksTab>
         
         final row = [
           lead['name'] ?? '',
-          widget.isManager ? _maskPhone(lead['phone'] ?? '') : (lead['phone'] ?? ''),
+          widget.isManager ? _maskPhone(lead['phone'] ?? '', task) : (lead['phone'] ?? ''),
           lead['email'] ?? '',
           _statusLabels[task['status']] ?? task['status'] ?? '',
           _priorityLabels[task['priority']] ?? task['priority'] ?? '',
@@ -1024,6 +1067,7 @@ class _EswariTasksTabState extends State<EswariTasksTab>
       builder: (_) => _TaskDetailSheet(
         task: task,
         isManager: widget.isManager,
+        userData: widget.userData,
         projects: _projects,
         onEdit: () {
           Navigator.pop(context);
@@ -1409,6 +1453,7 @@ class _SortSheet extends StatelessWidget {
 class _TaskDetailSheet extends StatelessWidget {
   final Map<String, dynamic> task;
   final bool isManager;
+  final Map<String, dynamic> userData;
   final List<Map<String, dynamic>> projects;
   final VoidCallback onEdit;
   final Function(String) onStatusChange;
@@ -1416,6 +1461,7 @@ class _TaskDetailSheet extends StatelessWidget {
   const _TaskDetailSheet({
     required this.task,
     required this.isManager,
+    required this.userData,
     required this.projects,
     required this.onEdit,
     required this.onStatusChange,
@@ -1425,7 +1471,7 @@ class _TaskDetailSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final lead = task['lead_detail'] ?? {};
     final leadName = lead['name'] ?? 'Unknown Lead';
-    final leadPhone = isManager ? _maskPhone(lead['phone'] ?? '') : (lead['phone'] ?? '');
+    final leadPhone = isManager ? _maskPhone(lead['phone'] ?? '', task) : (lead['phone'] ?? '');
     final leadEmail = lead['email'] ?? '';
     final leadAddress = lead['address'] ?? '';
     
@@ -1802,11 +1848,22 @@ class _TaskDetailSheet extends StatelessWidget {
     );
   }
 
-  String _maskPhone(String phone) {
-    if (phone.length <= 4) return phone;
-    final start = phone.substring(0, 2);
-    final end = phone.substring(phone.length - 2);
-    return '$start${'*' * (phone.length - 4)}$end';
+  // Helper function to mask phone number for managers (matching web app behavior)
+  String _maskPhone(String phone, Map<String, dynamic> task) {
+    // Get the lead detail from the task
+    final lead = task['lead_detail'] ?? {};
+    
+    // Check if manager created this lead
+    final createdById = lead['created_by'];
+    final currentUserId = userData['id'];
+    
+    if (createdById == currentUserId) {
+      return phone; // Manager created this lead - show full number
+    }
+    
+    // Lead created by someone else - mask the phone number
+    if (phone.length <= 4) return '****';
+    return '${'*' * (phone.length - 4)}${phone.substring(phone.length - 4)}';
   }
 
   Future<void> _launchURL(String url) async {
