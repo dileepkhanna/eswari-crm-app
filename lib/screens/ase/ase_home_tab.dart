@@ -141,27 +141,29 @@ class _ASEHomeTabState extends State<ASEHomeTab> {
   );
 
   Widget _buildManagerCard() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white, borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05),
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
             blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Row(
         children: [
           Container(
             width: 36, height: 36,
-            decoration: BoxDecoration(
-                color: _primary.withOpacity(0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: _primary.withOpacity(0.1), shape: BoxShape.circle),
             child: const Icon(Icons.supervisor_account_rounded, color: _primary, size: 20),
           ),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Reporting Manager',
-                  style: TextStyle(fontSize: 11, color: Colors.grey)),
+              Text('Reporting Manager',
+                  style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
               Text(managerName, style: const TextStyle(fontSize: 14,
                   fontWeight: FontWeight.w600, color: _primary)),
             ],
@@ -172,6 +174,7 @@ class _ASEHomeTabState extends State<ASEHomeTab> {
   }
 
   Widget _buildStatsGrid() {
+    final theme = Theme.of(context);
     final stats = [
       _Stat('Total Calls',   _callsCount,   Icons.phone_rounded,          _primary),
       _Stat('Total Leads',   _leadsCount,   Icons.leaderboard_rounded,    const Color(0xFF2E7D32)),
@@ -186,8 +189,9 @@ class _ASEHomeTabState extends State<ASEHomeTab> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Overview',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _primary)),
+            Text('Overview',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface)),
             if (_loading)
               const SizedBox(width: 16, height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2, color: _primary)),
@@ -205,18 +209,21 @@ class _ASEHomeTabState extends State<ASEHomeTab> {
   }
 
   Widget _buildStatCard(_Stat s) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white, borderRadius: BorderRadius.circular(14),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05),
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
             blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Row(
         children: [
           Container(
             width: 40, height: 40,
-            decoration: BoxDecoration(color: s.color.withOpacity(0.1),
+            decoration: BoxDecoration(color: s.color.withOpacity(isDark ? 0.2 : 0.1),
                 borderRadius: BorderRadius.circular(10)),
             child: Icon(s.icon, color: s.color, size: 20),
           ),
@@ -228,7 +235,9 @@ class _ASEHomeTabState extends State<ASEHomeTab> {
               children: [
                 Text('${s.value}', style: TextStyle(fontSize: 20,
                     fontWeight: FontWeight.bold, color: s.color)),
-                Text(s.label, style: const TextStyle(fontSize: 10, color: Colors.grey),
+                Text(s.label,
+                    style: TextStyle(fontSize: 10,
+                        color: theme.colorScheme.onSurfaceVariant),
                     overflow: TextOverflow.ellipsis),
               ],
             ),
@@ -239,19 +248,23 @@ class _ASEHomeTabState extends State<ASEHomeTab> {
   }
 
   Widget _buildTeamSection() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final employees = widget.userData['employees_names'] as List? ?? [];
     if (employees.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('My Team (${employees.length})',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _primary)),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface)),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white, borderRadius: BorderRadius.circular(14),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05),
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
                 blurRadius: 8, offset: const Offset(0, 2))],
           ),
           child: Wrap(
@@ -259,7 +272,7 @@ class _ASEHomeTabState extends State<ASEHomeTab> {
             children: employees.map((name) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: _primary.withOpacity(0.08),
+                color: _primary.withOpacity(isDark ? 0.15 : 0.08),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: _primary.withOpacity(0.2)),
               ),
@@ -279,6 +292,8 @@ class _ASEHomeTabState extends State<ASEHomeTab> {
   }
 
   Widget _buildQuickActions(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final actions = widget.isManager
         ? [
             _Action('New Call',   Icons.phone_callback_rounded,  _primary,                1),
@@ -296,14 +311,14 @@ class _ASEHomeTabState extends State<ASEHomeTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Quick Actions',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _primary)),
+        Text('Quick Actions',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface)),
         const SizedBox(height: 12),
         Row(
           children: actions.map((a) => Expanded(
             child: GestureDetector(
               onTap: () {
-                // Navigate to the respective tab
                 if (widget.onNavigateToTab != null) {
                   widget.onNavigateToTab!(a.tabIndex);
                 }
@@ -312,11 +327,11 @@ class _ASEHomeTabState extends State<ASEHomeTab> {
                 margin: EdgeInsets.only(right: a == actions.last ? 0 : 10),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: theme.colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     )
@@ -325,19 +340,18 @@ class _ASEHomeTabState extends State<ASEHomeTab> {
                 child: Column(
                   children: [
                     Container(
-                      width: 40,
-                      height: 40,
+                      width: 40, height: 40,
                       decoration: BoxDecoration(
-                        color: a.color.withOpacity(0.1),
+                        color: a.color.withOpacity(isDark ? 0.2 : 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(a.icon, color: a.color, size: 22),
                     ),
                     const SizedBox(height: 6),
-                    Text(
-                      a.label,
+                    Text(a.label,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 10, color: Colors.black87),
+                      style: TextStyle(fontSize: 10,
+                          color: theme.colorScheme.onSurface),
                     ),
                   ],
                 ),
@@ -350,11 +364,13 @@ class _ASEHomeTabState extends State<ASEHomeTab> {
   }
 
   Widget _buildRecentSection() {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Today\'s Summary',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _primary)),
+        Text('Today\'s Summary',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface)),
         const SizedBox(height: 12),
         _summaryCard(Icons.phone_missed_rounded, 'Pending Calls',
             '$_pendingCalls calls need follow-up', const Color(0xFFE65100)),
@@ -368,19 +384,22 @@ class _ASEHomeTabState extends State<ASEHomeTab> {
   }
 
   Widget _summaryCard(IconData icon, String title, String subtitle, Color color) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white, borderRadius: BorderRadius.circular(14),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05),
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
             blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Row(
         children: [
           Container(
             width: 44, height: 44,
-            decoration: BoxDecoration(color: color.withOpacity(0.1),
+            decoration: BoxDecoration(color: color.withOpacity(isDark ? 0.2 : 0.1),
                 borderRadius: BorderRadius.circular(12)),
             child: Icon(icon, color: color, size: 22),
           ),
@@ -389,12 +408,15 @@ class _ASEHomeTabState extends State<ASEHomeTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                Text(subtitle, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14,
+                    color: theme.colorScheme.onSurface)),
+                Text(subtitle, style: TextStyle(fontSize: 11,
+                    color: theme.colorScheme.onSurfaceVariant)),
               ],
             ),
           ),
-          Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+          Icon(Icons.chevron_right_rounded,
+              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5)),
         ],
       ),
     );

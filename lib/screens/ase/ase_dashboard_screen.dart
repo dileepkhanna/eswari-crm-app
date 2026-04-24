@@ -67,8 +67,10 @@ class _ASEDashboardScreenState extends State<ASEDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: _buildAppBar(),
       body: IndexedStack(index: _currentIndex, children: _tabs),
       bottomNavigationBar: _buildBottomNav(),
@@ -129,9 +131,11 @@ class _ASEDashboardScreenState extends State<ASEDashboardScreen> {
   }
 
   Widget _buildBottomNav() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.surface,
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.08),
               blurRadius: 12, offset: const Offset(0, -2))
@@ -154,17 +158,14 @@ class _ASEDashboardScreenState extends State<ASEDashboardScreen> {
                     children: [
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
-                          color: isActive
-                              ? _primary.withOpacity(0.12)
-                              : Colors.transparent,
+                          color: isActive ? _primary.withOpacity(0.12) : Colors.transparent,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Icon(
                           isActive ? item.activeIcon : item.icon,
-                          color: isActive ? _primary : Colors.grey[500],
+                          color: isActive ? _primary : theme.colorScheme.onSurfaceVariant,
                           size: 22,
                         ),
                       ),
@@ -172,10 +173,8 @@ class _ASEDashboardScreenState extends State<ASEDashboardScreen> {
                       Text(item.label,
                           style: TextStyle(
                             fontSize: 10,
-                            fontWeight: isActive
-                                ? FontWeight.w600
-                                : FontWeight.normal,
-                            color: isActive ? _primary : Colors.grey[500],
+                            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                            color: isActive ? _primary : theme.colorScheme.onSurfaceVariant,
                           )),
                     ],
                   ),

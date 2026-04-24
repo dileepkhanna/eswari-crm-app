@@ -73,8 +73,10 @@ class _LeavesScreenState extends State<LeavesScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: _primary,
         foregroundColor: Colors.white,
@@ -119,8 +121,10 @@ class _LeavesScreenState extends State<LeavesScreen> with SingleTickerProviderSt
   }
 
   Widget _buildFilterBar() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
-      color: Colors.white,
+      color: theme.colorScheme.surface,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
         children: [
@@ -137,6 +141,8 @@ class _LeavesScreenState extends State<LeavesScreen> with SingleTickerProviderSt
   }
 
   Widget _buildLeaveStats() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     // Calculate stats for current user
     final myLeaves = _leaves.where((l) => l['user'].toString() == widget.userData['id'].toString()).toList();
     final totalLeaves = myLeaves.length;
@@ -144,19 +150,16 @@ class _LeavesScreenState extends State<LeavesScreen> with SingleTickerProviderSt
     final approvedLeaves = myLeaves.where((l) => l['status'] == 'approved').length;
     final rejectedLeaves = myLeaves.where((l) => l['status'] == 'rejected').length;
     
-    // Calculate monthly leave count
     final now = DateTime.now();
     final monthlyLeaves = myLeaves.where((l) {
       try {
         final createdAt = DateTime.parse(l['created_at'] ?? '');
         return createdAt.year == now.year && createdAt.month == now.month;
-      } catch (_) {
-        return false;
-      }
+      } catch (_) { return false; }
     }).length;
 
     return Container(
-      color: Colors.white,
+      color: theme.colorScheme.surface,
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
@@ -234,41 +237,30 @@ class _LeavesScreenState extends State<LeavesScreen> with SingleTickerProviderSt
   }
 
   Widget _buildFilterChip(String label, String value) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final isSelected = _statusFilter == value;
     Color chipColor;
     switch (value) {
-      case 'pending':
-        chipColor = const Color(0xFFE65100);
-        break;
-      case 'approved':
-        chipColor = const Color(0xFF2E7D32);
-        break;
-      case 'rejected':
-        chipColor = const Color(0xFFC62828);
-        break;
-      default:
-        chipColor = _primary;
+      case 'pending':  chipColor = const Color(0xFFE65100); break;
+      case 'approved': chipColor = const Color(0xFF2E7D32); break;
+      case 'rejected': chipColor = const Color(0xFFC62828); break;
+      default:         chipColor = _primary;
     }
-
     return GestureDetector(
-      onTap: () {
-        setState(() => _statusFilter = value);
-        _fetchLeaves();
-      },
+      onTap: () { setState(() => _statusFilter = value); _fetchLeaves(); },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? chipColor : const Color(0xFFF5F6FA),
+          color: isSelected ? chipColor : (isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF5F6FA)),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? chipColor : Colors.grey.shade300,
-          ),
+          border: Border.all(color: isSelected ? chipColor : (isDark ? Colors.grey.shade700 : Colors.grey.shade300)),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 12,
-            color: isSelected ? Colors.white : Colors.grey[700],
+            color: isSelected ? Colors.white : theme.colorScheme.onSurfaceVariant,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
@@ -290,7 +282,7 @@ class _LeavesScreenState extends State<LeavesScreen> with SingleTickerProviderSt
             const SizedBox(height: 16),
             Text(
               _statusFilter == 'all' ? 'No leaves found' : 'No $_statusFilter leaves',
-              style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+              style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ],
         ),
@@ -309,6 +301,8 @@ class _LeavesScreenState extends State<LeavesScreen> with SingleTickerProviderSt
   }
 
   Widget _buildLeaveCard(Map<String, dynamic> leave, bool showActions) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final id = leave['id'];
     final leaveType = leave['leave_type'] ?? 'casual';
     final startDate = leave['start_date'] ?? '';
@@ -334,12 +328,12 @@ class _LeavesScreenState extends State<LeavesScreen> with SingleTickerProviderSt
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border(left: BorderSide(color: statusColor, width: 4)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           )
@@ -355,32 +349,24 @@ class _LeavesScreenState extends State<LeavesScreen> with SingleTickerProviderSt
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _primary.withOpacity(0.1),
+                    color: _primary.withOpacity(isDark ? 0.2 : 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     _getLeaveTypeLabel(leaveType),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: _primary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: const TextStyle(fontSize: 11, color: _primary, fontWeight: FontWeight.w600),
                   ),
                 ),
                 const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withOpacity(isDark ? 0.2 : 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     status.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: statusColor,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -389,46 +375,40 @@ class _LeavesScreenState extends State<LeavesScreen> with SingleTickerProviderSt
             if (showActions) ...[
               Row(
                 children: [
-                  Icon(Icons.person_outline_rounded, size: 16, color: Colors.grey[600]),
+                  Icon(Icons.person_outline_rounded, size: 16, color: theme.colorScheme.onSurfaceVariant),
                   const SizedBox(width: 6),
-                  Text(
-                    userName,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
+                  Text(userName, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
                 ],
               ),
               const SizedBox(height: 8),
             ],
             Row(
               children: [
-                Icon(Icons.calendar_today_rounded, size: 16, color: Colors.grey[600]),
+                Icon(Icons.calendar_today_rounded, size: 16, color: theme.colorScheme.onSurfaceVariant),
                 const SizedBox(width: 6),
                 Text(
                   '${_formatDate(startDate)} - ${_formatDate(endDate)}',
-                  style: const TextStyle(fontSize: 13),
+                  style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface),
                 ),
                 const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.1),
+                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     '$durationDays day${durationDays > 1 ? 's' : ''}',
-                    style: TextStyle(fontSize: 10, color: Colors.grey[700]),
+                    style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant),
                   ),
                 ),
               ],
             ),
             if (reason.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text(
-                reason,
-                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
+              Text(reason,
+                  style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+                  maxLines: 2, overflow: TextOverflow.ellipsis),
             ],
             if (showActions && status == 'pending') ...[
               const SizedBox(height: 12),
@@ -1211,21 +1191,20 @@ class _ApplyLeaveDialogState extends State<_ApplyLeaveDialog> {
                           decoration: BoxDecoration(
                             border: Border.all(color: Colors.grey.shade300, width: 2, style: BorderStyle.solid),
                             borderRadius: BorderRadius.circular(8),
-                            color: Colors.grey.shade50,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFF2A2A3E)
+                                : Colors.grey.shade50,
                           ),
                           child: Column(
                             children: [
                               Icon(Icons.upload_file_rounded, size: 32, color: Colors.grey[400]),
                               const SizedBox(height: 8),
-                              const Text(
-                                'Click to upload document',
-                                style: TextStyle(fontSize: 13, color: Colors.grey),
-                              ),
+                              Text('Click to upload document',
+                                  style: TextStyle(fontSize: 13,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
                               const SizedBox(height: 4),
-                              Text(
-                                'PDF, JPG, PNG (max 10MB)',
-                                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                              ),
+                              Text('PDF, JPG, PNG (max 10MB)',
+                                  style: TextStyle(fontSize: 11, color: Colors.grey[500])),
                             ],
                           ),
                         ),
@@ -1238,7 +1217,7 @@ class _ApplyLeaveDialogState extends State<_ApplyLeaveDialog> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
@@ -1299,6 +1278,8 @@ class _ApplyLeaveDialogState extends State<_ApplyLeaveDialog> {
     required DateTime? value,
     required void Function(DateTime?) onChanged,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return GestureDetector(
       onTap: () async {
         final picked = await showDatePicker(
@@ -1319,11 +1300,13 @@ class _ApplyLeaveDialogState extends State<_ApplyLeaveDialog> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade400, width: 1.5),
+          border: Border.all(
+              color: isDark ? Colors.grey.shade600 : Colors.grey.shade400, width: 1.5),
         ),
         child: Row(
           children: [
-            Icon(Icons.calendar_today_rounded, size: 18, color: Colors.grey[600]),
+            Icon(Icons.calendar_today_rounded, size: 18,
+                color: theme.colorScheme.onSurfaceVariant),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -1332,14 +1315,17 @@ class _ApplyLeaveDialogState extends State<_ApplyLeaveDialog> {
                     : DateFormat('EEEE, MMM dd, yyyy').format(value),
                 style: TextStyle(
                   fontSize: 14,
-                  color: value == null ? Colors.grey[400] : Colors.black87,
+                  color: value == null
+                      ? theme.colorScheme.onSurfaceVariant.withOpacity(0.5)
+                      : theme.colorScheme.onSurface,
                 ),
               ),
             ),
             if (value != null)
               GestureDetector(
                 onTap: () => onChanged(null),
-                child: Icon(Icons.clear_rounded, size: 18, color: Colors.grey[600]),
+                child: Icon(Icons.clear_rounded, size: 18,
+                    color: theme.colorScheme.onSurfaceVariant),
               ),
           ],
         ),

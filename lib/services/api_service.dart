@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -13,29 +14,40 @@ class ApiService {
   }) async {
     print('🌐 API: ${method} ${ApiConfig.baseUrl}$endpoint');
     
-    String? token = await AuthService.getAccessToken();
-    http.Response res = await _makeRequest(endpoint, method, body, token);
+    try {
+      String? token = await AuthService.getAccessToken();
+      http.Response res = await _makeRequest(endpoint, method, body, token);
 
-    print('🌐 API: Response status: ${res.statusCode}');
-    print('🌐 API: Response body length: ${res.body.length}');
-    print('🌐 API: Response body preview: ${res.body.substring(0, res.body.length > 200 ? 200 : res.body.length)}');
+      print('🌐 API: Response status: ${res.statusCode}');
+      print('🌐 API: Response body length: ${res.body.length}');
+      print('🌐 API: Response body preview: ${res.body.substring(0, res.body.length > 200 ? 200 : res.body.length)}');
 
-    // Auto-refresh on 401
-    if (res.statusCode == 401) {
-      print('🌐 API: Got 401, attempting token refresh...');
-      final refreshed = await AuthService.refreshToken();
-      if (refreshed) {
-        token = await AuthService.getAccessToken();
-        res = await _makeRequest(endpoint, method, body, token);
-        print('🌐 API: Retry response status: ${res.statusCode}');
+      // Auto-refresh on 401
+      if (res.statusCode == 401) {
+        print('🌐 API: Got 401, attempting token refresh...');
+        final refreshed = await AuthService.refreshToken();
+        if (refreshed) {
+          token = await AuthService.getAccessToken();
+          res = await _makeRequest(endpoint, method, body, token);
+          print('🌐 API: Retry response status: ${res.statusCode}');
+        }
       }
-    }
 
-    return {
-      'status': res.statusCode,
-      'data': res.body.isNotEmpty ? jsonDecode(res.body) : null,
-      'success': res.statusCode >= 200 && res.statusCode < 300,
-    };
+      return {
+        'status': res.statusCode,
+        'data': res.body.isNotEmpty ? jsonDecode(res.body) : null,
+        'success': res.statusCode >= 200 && res.statusCode < 300,
+      };
+    } on TimeoutException {
+      print('🌐 API: Request timed out for $endpoint');
+      return {'status': 408, 'data': null, 'success': false};
+    } on SocketException {
+      print('🌐 API: No internet / server unreachable for $endpoint');
+      return {'status': 503, 'data': null, 'success': false};
+    } catch (e) {
+      print('🌐 API: Error for $endpoint: $e');
+      return {'status': 500, 'data': null, 'success': false};
+    }
   }
 
   static Future<http.Response> _makeRequest(
@@ -51,12 +63,13 @@ class ApiService {
     };
     final encoded = body != null ? jsonEncode(body) : null;
 
+    const timeout = Duration(seconds: 15);
     switch (method.toUpperCase()) {
-      case 'POST':   return await http.post(uri,   headers: headers, body: encoded);
-      case 'PUT':    return await http.put(uri,    headers: headers, body: encoded);
-      case 'PATCH':  return await http.patch(uri,  headers: headers, body: encoded);
-      case 'DELETE': return await http.delete(uri, headers: headers);
-      default:       return await http.get(uri,    headers: headers);
+      case 'POST':   return await http.post(uri,   headers: headers, body: encoded).timeout(timeout);
+      case 'PUT':    return await http.put(uri,    headers: headers, body: encoded).timeout(timeout);
+      case 'PATCH':  return await http.patch(uri,  headers: headers, body: encoded).timeout(timeout);
+      case 'DELETE': return await http.delete(uri, headers: headers).timeout(timeout);
+      default:       return await http.get(uri,    headers: headers).timeout(timeout);
     }
   }
 

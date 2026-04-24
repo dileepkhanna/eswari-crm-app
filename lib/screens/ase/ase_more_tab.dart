@@ -5,10 +5,8 @@ import '../settings/settings_screen.dart';
 import '../leaves/leaves_screen.dart';
 import '../holidays/holidays_screen.dart';
 import '../birthdays/birthday_calendar_screen.dart';
-import '../eswari_group/eswari_group_screen.dart';
 import '../reports/reports_screen.dart';
 import '../activity/activity_screen.dart';
-import '../capital/capital_dashboard_screen.dart';
 
 class ASEMoreTab extends StatelessWidget {
   final Map<String, dynamic> userData;
@@ -25,17 +23,21 @@ class ASEMoreTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          _buildProfileCard(),
-          const SizedBox(height: 20),
-          if (isManager) ...[_buildManagerSection(context), const SizedBox(height: 16)],
-          _buildMenuSection(context),
-          const SizedBox(height: 16),
-          _buildLogoutButton(context),
-        ],
+    final theme = Theme.of(context);
+    return Container(
+      color: theme.scaffoldBackgroundColor,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _buildProfileCard(),
+            const SizedBox(height: 20),
+            if (isManager) ...[_buildManagerSection(context), const SizedBox(height: 16)],
+            _buildMenuSection(context),
+            const SizedBox(height: 16),
+            _buildLogoutButton(context),
+          ],
+        ),
       ),
     );
   }
@@ -92,99 +94,57 @@ class ASEMoreTab extends StatelessWidget {
   Widget _buildManagerSection(BuildContext context) {
     return _section('Manager Tools', [
       _MoreItem(Icons.bar_chart_rounded,    'Reports',    const Color(0xFF2E7D32), () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ReportsScreen(userData: userData, isManager: isManager),
-          ),
-        );
+        Navigator.push(context, MaterialPageRoute(
+            builder: (_) => ReportsScreen(userData: userData, isManager: isManager)));
       }),
       _MoreItem(Icons.timeline_rounded,     'Activity',   const Color(0xFF6A1B9A), () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ActivityScreen(userData: userData, isManager: isManager),
-          ),
-        );
+        Navigator.push(context, MaterialPageRoute(
+            builder: (_) => ActivityScreen(userData: userData, isManager: isManager)));
       }),
       _MoreItem(Icons.pending_actions_rounded,'Leaves',   const Color(0xFFE65100), () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => LeavesScreen(userData: userData),
-          ),
-        );
+        Navigator.push(context, MaterialPageRoute(
+            builder: (_) => LeavesScreen(userData: userData)));
       }),
-    ]);
+    ], context);
   }
 
   Widget _buildMenuSection(BuildContext context) {
     return _section('General', [
-      _MoreItem(Icons.account_balance_rounded, 'Eswari Capital', const Color(0xFF00897B), () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => CapitalDashboardScreen(
-              userData: userData,
-              isManager: isManager,
-            ),
-          ),
-        );
-      }),
-      _MoreItem(Icons.business_center_rounded, 'Eswari Group', const Color(0xFF6A1B9A), () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const EswariGroupScreen(),
-          ),
-        );
-      }),
       _MoreItem(Icons.beach_access_rounded, 'Holidays',   const Color(0xFF1565C0), () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => HolidaysScreen(userData: userData),
-          ),
-        );
+        Navigator.push(context, MaterialPageRoute(
+            builder: (_) => HolidaysScreen(userData: userData)));
       }),
       _MoreItem(Icons.event_available_rounded,'My Leaves',const Color(0xFF2E7D32), () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => LeavesScreen(userData: userData),
-          ),
-        );
+        Navigator.push(context, MaterialPageRoute(
+            builder: (_) => LeavesScreen(userData: userData)));
       }),
       _MoreItem(Icons.cake_rounded,         'Birthdays',  const Color(0xFFE65100), () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => BirthdayCalendarScreen(userData: userData),
-          ),
-        );
+        Navigator.push(context, MaterialPageRoute(
+            builder: (_) => BirthdayCalendarScreen(userData: userData)));
       }),
       _MoreItem(Icons.settings_rounded,     'Settings',   const Color(0xFF757575), () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => SettingsScreen(userData: userData),
-          ),
-        );
+        Navigator.push(context, MaterialPageRoute(
+            builder: (_) => SettingsScreen(userData: userData)));
       }),
-    ]);
+    ], context);
   }
 
-  Widget _section(String title, List<_MoreItem> items) {
+  Widget _section(String title, List<_MoreItem> items, BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontSize: 14,
-            fontWeight: FontWeight.bold, color: Colors.grey)),
+        Text(title, style: TextStyle(fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurfaceVariant)),
         const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white, borderRadius: BorderRadius.circular(14),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05),
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [BoxShadow(
+                color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
                 blurRadius: 8, offset: const Offset(0, 2))],
           ),
           child: Column(
@@ -197,17 +157,20 @@ class ASEMoreTab extends StatelessWidget {
                     leading: Container(
                       width: 38, height: 38,
                       decoration: BoxDecoration(
-                          color: item.color.withOpacity(0.1),
+                          color: item.color.withOpacity(isDark ? 0.2 : 0.1),
                           borderRadius: BorderRadius.circular(10)),
                       child: Icon(item.icon, color: item.color, size: 20),
                     ),
                     title: Text(item.label,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                    trailing: Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500,
+                            color: theme.colorScheme.onSurface)),
+                    trailing: Icon(Icons.chevron_right_rounded,
+                        color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5)),
                     onTap: item.onTap,
                   ),
                   if (!isLast)
-                    Divider(height: 1, indent: 66, color: Colors.grey[100]),
+                    Divider(height: 1, indent: 66,
+                        color: theme.colorScheme.onSurfaceVariant.withOpacity(0.1)),
                 ],
               );
             }).toList(),
@@ -218,6 +181,8 @@ class ASEMoreTab extends StatelessWidget {
   }
 
   Widget _buildLogoutButton(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
@@ -228,11 +193,15 @@ class ASEMoreTab extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => const LoginScreen()));
           }
         },
-        icon: const Icon(Icons.logout_rounded, color: Color(0xFFC62828)),
-        label: const Text('Logout',
-            style: TextStyle(color: Color(0xFFC62828), fontWeight: FontWeight.w600)),
+        icon: Icon(Icons.logout_rounded,
+            color: isDark ? const Color(0xFFEF5350) : const Color(0xFFC62828)),
+        label: Text('Logout',
+            style: TextStyle(
+                color: isDark ? const Color(0xFFEF5350) : const Color(0xFFC62828),
+                fontWeight: FontWeight.w600)),
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Color(0xFFC62828)),
+          side: BorderSide(
+              color: isDark ? const Color(0xFFEF5350) : const Color(0xFFC62828)),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           padding: const EdgeInsets.symmetric(vertical: 14),
         ),

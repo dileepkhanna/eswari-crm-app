@@ -98,7 +98,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     
     // Pulse animation controller
     _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 2500),
       vsync: this,
     )..repeat(reverse: true);
     
@@ -148,7 +148,10 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       _textController.forward();
     });
     
-    _checkAuth();
+    _checkAuth().then((_) {
+      // Stop pulse animation after navigation to free GPU buffers
+      if (_pulseController.isAnimating) _pulseController.stop();
+    });
   }
 
   @override

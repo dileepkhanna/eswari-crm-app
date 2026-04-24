@@ -58,8 +58,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.w600)),
         backgroundColor: _primary,
@@ -400,6 +402,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildSection(String title, List<Widget> children) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -407,10 +411,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Colors.grey,
+              color: theme.colorScheme.onSurfaceVariant,
               letterSpacing: 0.5,
             ),
           ),
@@ -418,11 +422,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -436,7 +440,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   child,
                   if (index < children.length - 1)
-                    Divider(height: 1, indent: 56, color: Colors.grey[100]),
+                    Divider(height: 1, indent: 56,
+                        color: theme.colorScheme.onSurfaceVariant.withOpacity(0.1)),
                 ],
               );
             }).toList(),
@@ -454,6 +459,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Widget? trailing,
     VoidCallback? onTap,
   }) {
+    final theme = Theme.of(context);
     return ListTile(
       leading: Container(
         width: 40,
@@ -466,13 +472,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       title: Text(
         title,
-        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500,
+            color: theme.colorScheme.onSurface),
       ),
       subtitle: Text(
         subtitle,
-        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+        style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
       ),
-      trailing: trailing ?? Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+      trailing: trailing ?? Icon(Icons.chevron_right_rounded,
+          color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5)),
       onTap: onTap,
     );
   }
@@ -484,6 +492,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required bool value,
     required ValueChanged<bool> onChanged,
   }) {
+    final theme = Theme.of(context);
     return ListTile(
       leading: Container(
         width: 40,
@@ -496,11 +505,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       title: Text(
         title,
-        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500,
+            color: theme.colorScheme.onSurface),
       ),
       subtitle: Text(
         subtitle,
-        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+        style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
       ),
       trailing: Switch(
         value: value,
@@ -539,24 +549,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildInfoRow(String label, String value) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey,
-            ),
-          ),
+          Text(label,
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurfaceVariant)),
           const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 15),
-          ),
+          Text(value,
+              style: TextStyle(fontSize: 15, color: theme.colorScheme.onSurface)),
         ],
       ),
     );

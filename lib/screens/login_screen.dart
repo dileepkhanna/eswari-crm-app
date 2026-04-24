@@ -8,6 +8,7 @@ import '../screens/manager/manager_dashboard_screen.dart';
 import '../screens/employee/employee_dashboard_screen.dart';
 import '../screens/ase/ase_dashboard_screen.dart';
 import '../screens/eswari/eswari_dashboard_screen.dart';
+import '../screens/capital/capital_main_screen.dart';
 import '../config/company_config.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -125,10 +126,15 @@ class _LoginScreenState extends State<LoginScreen>
         nextScreen = AdminDashboardScreen(userData: user);
       } else {
         // Route by company for manager/employee
-        final isASE = code == 'ASE' || code == 'ASE_TECH';
-        final isEswari = code == 'ESWARI' || code == 'ESWARI_GROUP';
+        final codeUpper = code.toUpperCase();
+        final isASE = codeUpper == 'ASE' || codeUpper == 'ASE_TECH';
+        final isEswari = codeUpper == 'ESWARI' || codeUpper == 'ESWARI_GROUP';
+        final isCapital = codeUpper == 'CAPITAL' || codeUpper == 'ESWARI_CAPITAL' || codeUpper == 'ESWARI_CAP';
         
-        if (isASE) {
+        if (isCapital) {
+          print('DEBUG LOGIN: Navigating to CapitalDashboard');
+          nextScreen = CapitalMainScreen(userData: user, isManager: role == 'manager');
+        } else if (isASE) {
           print('DEBUG LOGIN: Navigating to ASEDashboard');
           nextScreen = ASEDashboardScreen(userData: user);
         } else if (isEswari) {

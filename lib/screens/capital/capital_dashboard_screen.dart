@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
+import '../../utils/greeting_utils.dart';
 
 class CapitalDashboardScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
   final bool isManager;
+  final Function(int)? onNavigateToTab;
 
   const CapitalDashboardScreen({
     super.key,
     required this.userData,
     required this.isManager,
+    this.onNavigateToTab,
   });
 
   @override
@@ -17,703 +20,398 @@ class CapitalDashboardScreen extends StatefulWidget {
 
 class _CapitalDashboardScreenState extends State<CapitalDashboardScreen> {
   static const Color _primary = Color(0xFF1565C0);
-  
+  static const Color _accent  = Color(0xFF1E88E5);
+
   bool _loading = true;
-  String? _error;
-  
-  // Stats
-  int _totalCustomers = 0;
-  int _convertedCustomers = 0;
-  int _pendingCustomers = 0;
-  
-  int _totalLoans = 0;
-  int _activeLoans = 0;
-  int _disbursedLoans = 0;
-  
+
+  int _totalCalls    = 0;
+  int _pendingCalls  = 0;
+  int _totalLoans    = 0;
+  int _activeLoans   = 0;
   int _totalServices = 0;
-  int _activeServices = 0;
-  int _completedServices = 0;
-  
-  int _totalTasks = 0;
-  int _pendingTasks = 0;
-  int _completedTasks = 0;
-  int _urgentTasks = 0;
-  int _overdueTasks = 0;
-  
-  List<Map<String, dynamic>> _recentTasks = [];
-  Map<String, int> _loanStatusBreakdown = {};
-  Map<String, int> _serviceCategories = {};
-  
+  int _totalTasks    = 0;
+  int _pendingTasks  = 0;
+  int _urgentTasks   = 0;
+
+  String get userName =>
+      '${widget.userData['first_name'] ?? ''} ${widget.userData['last_name'] ?? ''}'.trim();
+
   @override
   void initState() {
     super.initState();
-    _fetchCapitalData();
+    _fetchStats();
   }
 
-  Future<void> _fetchCapitalData() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    
+  Future<void> _fetchStats() async {
+    setState(() => _loading = true);
     try {
-      // Fetch all capital data in parallel
       final results = await Future.wait([
-        ApiService.get('/capital/customers/'),
-        ApiService.get('/capital/loans/'),
-        ApiService.get('/capital/services/'),
-        ApiService.get('/capital/tasks/'),
+        ApiService.get('/capital/customers/?page_size=1'),
+        ApiService.get('/capital/customers/?call_status=pending&page_size=1'),
+        ApiService.get('/capital/loans/?page_size=1'),
+        ApiService.get('/capital/loans/?status=active&page_size=1'),
+        ApiService.get('/capital/services/?page_size=1'),
+        ApiService.get('/capital/tasks/?page_size=1'),
+        ApiService.get('/capital/tasks/?status=in_progress&page_size=1'),
+        ApiService.get('/capital/tasks/?priority=urgent&page_size=1'),
       ]);
-      
-      if (mounted) {
-        // Process customers
-        final customersData = results[0]['data'];
-        final customers = (customersData is List ? customersData : (customersData?['results'] ?? [])) as List;
-        _totalCustomers = customers.length;
-        _convertedCustomers = customers.where((c) => c['is_converted'] == true).length;
-        _pendingCustomers = customers.where((c) => c['call_status'] == 'pending').length;
-        
-        // Process loans
-        final loansData = results[1]['data'];
-        final loans = (loansData is List ? loansData : (loansData?['results'] ?? [])) as List;
-        _totalLoans = loans.length;
-        _activeLoans = loans.where((l) => ['inquiry', 'documents_pending', 'under_review', 'approved'].contains(l['status'])).length;
-        _disbursedLoans = loans.where((l) => l['status'] == 'disbursed').length;
-        
-        // Loan status breakdown
-        _loanStatusBreakdown = {
-          'Inquiry': loans.where((l) => l['status'] == 'inquiry').length,
-          'Docs Pending': loans.where((l) => l['status'] == 'documents_pending').length,
-          'Under Review': loans.where((l) => l['status'] == 'under_review').length,
-          'Approved': loans.where((l) => l['status'] == 'approved').length,
-          'Disbursed': loans.where((l) => l['status'] == 'disbursed').length,
-          'Rejected': loans.where((l) => l['status'] == 'rejected').length,
-        };
-        _loanStatusBreakdown.removeWhere((key, value) => value == 0);
-        
-        // Process services
-        final servicesData = results[2]['data'];
-        final services = (servicesData is List ? servicesData : (servicesData?['results'] ?? [])) as List;
-        _totalServices = services.length;
-        _activeServices = services.where((s) => ['inquiry', 'documents_pending', 'in_progress'].contains(s['status'])).length;
-        _completedServices = services.where((s) => s['status'] == 'completed').length;
-        
-        // Service categories
-        int gstCount = 0;
-        int msmeCount = 0;
-        int itrCount = 0;
-        
-        for (var service in services) {
-          final serviceType = service['service_type'] ?? '';
-          if (serviceType.contains('gst') || serviceType.contains('lut') || serviceType.contains('eway')) {
-            gstCount++;
-          } else if (serviceType.contains('msme')) {
-            msmeCount++;
-          } else if (serviceType.contains('itr')) {
-            itrCount++;
-          }
-        }
-        
-        _serviceCategories = {
-          'GST': gstCount,
-          'MSME': msmeCount,
-          'Income Tax': itrCount,
-        };
-        
-        // Process tasks
-        final tasksData = results[3]['data'];
-        final tasks = (tasksData is List ? tasksData : (tasksData?['results'] ?? [])) as List;
-        _totalTasks = tasks.length;
-        _pendingTasks = tasks.where((t) => ['in_progress', 'follow_up', 'document_collection', 'processing'].contains(t['status'])).length;
-        _completedTasks = tasks.where((t) => t['status'] == 'completed').length;
-        _urgentTasks = tasks.where((t) => t['priority'] == 'urgent' && t['status'] != 'completed').length;
-        
-        // Overdue tasks
-        final now = DateTime.now();
-        _overdueTasks = tasks.where((t) {
-          if (t['due_date'] == null || t['status'] == 'completed') return false;
-          try {
-            final dueDate = DateTime.parse(t['due_date']);
-            return dueDate.isBefore(now);
-          } catch (e) {
-            return false;
-          }
-        }).length;
-        
-        // Recent tasks (top 5 pending)
-        _recentTasks = tasks
-            .where((t) => t['status'] != 'completed' && t['status'] != 'rejected')
-            .take(5)
-            .toList();
-        
-        setState(() => _loading = false);
-      }
-    } catch (e) {
       if (mounted) {
         setState(() {
-          _loading = false;
-          _error = 'Failed to load capital data: ${e.toString()}';
+          _totalCalls    = results[0]['data']?['count'] ?? 0;
+          _pendingCalls  = results[1]['data']?['count'] ?? 0;
+          _totalLoans    = results[2]['data']?['count'] ?? 0;
+          _activeLoans   = results[3]['data']?['count'] ?? 0;
+          _totalServices = results[4]['data']?['count'] ?? 0;
+          _totalTasks    = results[5]['data']?['count'] ?? 0;
+          _pendingTasks  = results[6]['data']?['count'] ?? 0;
+          _urgentTasks   = results[7]['data']?['count'] ?? 0;
+          _loading       = false;
         });
       }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor    = isDark ? const Color(0xFF1E1E2E) : Colors.white;
+    final bgColor      = isDark ? const Color(0xFF12121C) : Colors.grey[50]!;
+    final textPrimary  = isDark ? Colors.white : Colors.black87;
+    final textSecondary= isDark ? Colors.grey[400]! : Colors.grey[600]!;
+    final shadowColor  = isDark ? Colors.black.withOpacity(0.3) : Colors.black.withOpacity(0.05);
+
     return Scaffold(
-      backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
-      appBar: AppBar(
-        title: const Text('Eswari Capital', style: TextStyle(fontWeight: FontWeight.w600)),
-        backgroundColor: _primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _fetchCapitalData,
-          ),
-        ],
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? _buildErrorState()
-              : RefreshIndicator(
-                  onRefresh: _fetchCapitalData,
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Top stat cards
-                        _buildStatCards(),
-                        const SizedBox(height: 16),
-                        
-                        // Alert row
-                        if (_overdueTasks > 0 || _urgentTasks > 0) ...[
-                          _buildAlerts(),
-                          const SizedBox(height: 16),
-                        ],
-                        
-                        // Details section
-                        _buildDetailsSection(),
-                      ],
-                    ),
-                  ),
-                ),
-    );
-  }
-  
-  Widget _buildErrorState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-            const SizedBox(height: 16),
-            Text(
-              'Unable to Load Data',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _error ?? 'An error occurred',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _fetchCapitalData,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Try Again'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _primary,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildStatCards() {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.4,
-      children: [
-        _buildStatCard(
-          'Calls',
-          _totalCustomers,
-          '$_convertedCustomers converted · $_pendingCustomers pending',
-          Icons.people_outline,
-          Colors.blue,
-        ),
-        _buildStatCard(
-          'Loans',
-          _totalLoans,
-          '$_activeLoans active · $_disbursedLoans disbursed',
-          Icons.account_balance,
-          Colors.green,
-        ),
-        _buildStatCard(
-          'Services',
-          _totalServices,
-          '$_activeServices active · $_completedServices completed',
-          Icons.description_outlined,
-          Colors.orange,
-        ),
-        _buildStatCard(
-          'Tasks',
-          _totalTasks,
-          '$_pendingTasks pending · $_urgentTasks urgent',
-          Icons.task_outlined,
-          Colors.purple,
-        ),
-      ],
-    );
-  }
-  
-  Widget _buildStatCard(String title, int value, String subtitle, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: color, size: 20),
-              ),
-            ],
-          ),
-          Column(
+      backgroundColor: bgColor,
+      body: RefreshIndicator(
+        onRefresh: _fetchStats,
+        color: _primary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                value.toString(),
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[700],
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey[600],
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
+              _buildWelcomeBanner(isDark),
+              const SizedBox(height: 16),
+              _buildStatsGrid(isDark, cardColor, textPrimary, shadowColor),
+              const SizedBox(height: 20),
+              _buildQuickActions(isDark, cardColor, textPrimary, shadowColor),
+              const SizedBox(height: 20),
+              _buildTodaySummary(isDark, cardColor, textPrimary, textSecondary, shadowColor),
+              const SizedBox(height: 20),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
-  
-  Widget _buildAlerts() {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: [
-        if (_overdueTasks > 0)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.red[50],
-              border: Border.all(color: Colors.red[200]!),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.warning_amber, size: 16, color: Colors.red[700]),
-                const SizedBox(width: 6),
-                Text(
-                  '$_overdueTasks overdue task${_overdueTasks > 1 ? 's' : ''}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.red[700],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        if (_urgentTasks > 0)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.orange[50],
-              border: Border.all(color: Colors.orange[200]!),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.access_time, size: 16, color: Colors.orange[700]),
-                const SizedBox(width: 6),
-                Text(
-                  '$_urgentTasks urgent task${_urgentTasks > 1 ? 's' : ''}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.orange[700],
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-  
-  Widget _buildDetailsSection() {
-    return Column(
-      children: [
-        // Loan Pipeline
-        _buildLoanPipeline(),
-        const SizedBox(height: 16),
-        
-        // Service Breakdown
-        _buildServiceBreakdown(),
-        const SizedBox(height: 16),
-        
-        // Pending Tasks
-        _buildPendingTasks(),
-      ],
-    );
-  }
-  
-  Widget _buildLoanPipeline() {
+
+  // ── Welcome Banner ──────────────────────────────────────────────────────────
+  Widget _buildWelcomeBanner(bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF0D1B2A), const Color(0xFF1565C0)]
+              : [_primary, _accent],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: _primary.withOpacity(isDark ? 0.4 : 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(Icons.account_balance, size: 16, color: Colors.green[600]),
-              const SizedBox(width: 8),
-              const Text(
-                'Loan Pipeline',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (_loanStatusBreakdown.isEmpty)
-            Text(
-              'No loans yet',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            )
-          else
-            ..._loanStatusBreakdown.entries.map((entry) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.isManager ? 'Manager Dashboard' : '${getGreeting()},',
+                  style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 12),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  userName.isEmpty ? 'User' : userName,
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _getLoanStatusColor(entry.key).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        entry.key,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: _getLoanStatusColor(entry.key),
-                        ),
-                      ),
-                    ),
-                    Text(
-                      entry.value.toString(),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    _chip(widget.isManager ? 'Manager' : 'Executive',
+                        Colors.white.withOpacity(0.2)),
+                    const SizedBox(width: 8),
+                    _chip('Eswari Capital', Colors.white.withOpacity(0.15)),
                   ],
                 ),
-              );
-            }).toList(),
+              ],
+            ),
+          ),
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(isDark ? 0.1 : 0.2),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+            ),
+            child: Center(
+              child: Text(
+                userName.isNotEmpty ? userName[0].toUpperCase() : 'C',
+                style: const TextStyle(
+                    color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
-  
-  Widget _buildServiceBreakdown() {
+
+  Widget _chip(String label, Color bg) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+        child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 10)),
+      );
+
+  // ── Stats Grid ──────────────────────────────────────────────────────────────
+  Widget _buildStatsGrid(bool isDark, Color cardColor, Color textPrimary, Color shadowColor) {
+    final stats = [
+      _Stat('Total Calls',   _totalCalls,   Icons.phone_rounded,             _primary),
+      _Stat('Pending Calls', _pendingCalls, Icons.pending_actions_rounded,   _primary),
+      _Stat('Loans',         _totalLoans,   Icons.account_balance_rounded,   _primary),
+      _Stat('Services',      _totalServices,Icons.miscellaneous_services,    _primary),
+      _Stat('Total Tasks',   _totalTasks,   Icons.task_alt_rounded,          _primary),
+      _Stat('Urgent Tasks',  _urgentTasks,  Icons.priority_high_rounded,     Colors.red),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Overview',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : _primary)),
+            if (_loading)
+              const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: _primary)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 1.7,
+          children: stats
+              .map((s) => _buildStatCard(s, cardColor, textPrimary, shadowColor))
+              .toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(_Stat s, Color cardColor, Color textPrimary, Color shadowColor) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
+        color: cardColor,
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+          BoxShadow(color: shadowColor, blurRadius: 8, offset: const Offset(0, 2))
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+                color: s.color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10)),
+            child: Icon(s.icon, color: s.color, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('${s.value}',
+                    style: TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.bold, color: s.color)),
+                Text(s.label,
+                    style: TextStyle(fontSize: 10, color: textPrimary.withOpacity(0.5)),
+                    overflow: TextOverflow.ellipsis),
+              ],
+            ),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.trending_up, size: 16, color: Colors.orange[600]),
-              const SizedBox(width: 8),
-              const Text(
-                'Services by Category',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ..._serviceCategories.entries.map((entry) {
-            final percentage = _totalServices > 0 ? (entry.value / _totalServices) : 0.0;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        entry.key,
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                      ),
-                      Text(
-                        entry.value.toString(),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+    );
+  }
+
+  // ── Quick Actions ───────────────────────────────────────────────────────────
+  Widget _buildQuickActions(bool isDark, Color cardColor, Color textPrimary, Color shadowColor) {
+    final actions = [
+      _Action('Calls',    Icons.phone_callback_rounded,  _primary,  1),
+      _Action('Loans',    Icons.account_balance_rounded, _primary,  2),
+      _Action('Services', Icons.miscellaneous_services,  _primary,  3),
+      _Action('Tasks',    Icons.task_alt_rounded,        _primary,  4),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Quick Actions',
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : _primary)),
+        const SizedBox(height: 12),
+        Row(
+          children: actions.map((a) {
+            final isLast = a == actions.last;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => widget.onNavigateToTab?.call(a.tabIndex),
+                child: Container(
+                  margin: EdgeInsets.only(right: isLast ? 0 : 10),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(color: shadowColor, blurRadius: 8, offset: const Offset(0, 2))
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: percentage,
-                      backgroundColor: Colors.grey[200],
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        _getServiceCategoryColor(entry.key),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                            color: a.color.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(12)),
+                        child: Icon(a.icon, color: a.color, size: 22),
                       ),
-                      minHeight: 6,
-                    ),
+                      const SizedBox(height: 6),
+                      Text(a.label,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 10, color: textPrimary.withOpacity(0.8))),
+                    ],
                   ),
-                ],
+                ),
               ),
             );
           }).toList(),
-        ],
-      ),
+        ),
+      ],
     );
   }
-  
-  Widget _buildPendingTasks() {
+
+  // ── Today's Summary ─────────────────────────────────────────────────────────
+  Widget _buildTodaySummary(bool isDark, Color cardColor, Color textPrimary,
+      Color textSecondary, Color shadowColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("Today's Summary",
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : _primary)),
+        const SizedBox(height: 12),
+        _summaryCard(Icons.phone_missed_rounded, 'Pending Calls',
+            '$_pendingCalls calls need follow-up', _primary,
+            cardColor, textPrimary, textSecondary, shadowColor),
+        _summaryCard(Icons.account_balance_rounded, 'Active Loans',
+            '$_activeLoans loans in progress', _primary,
+            cardColor, textPrimary, textSecondary, shadowColor),
+        _summaryCard(Icons.task_alt_rounded, 'Pending Tasks',
+            '$_pendingTasks tasks to complete', _primary,
+            cardColor, textPrimary, textSecondary, shadowColor),
+        if (_urgentTasks > 0)
+          _summaryCard(Icons.priority_high_rounded, 'Urgent Tasks',
+              '$_urgentTasks tasks need immediate attention', Colors.red,
+              cardColor, textPrimary, textSecondary, shadowColor),
+      ],
+    );
+  }
+
+  Widget _summaryCard(IconData icon, String title, String subtitle, Color color,
+      Color cardColor, Color textPrimary, Color textSecondary, Color shadowColor) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
+        color: cardColor,
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
+          BoxShadow(color: shadowColor, blurRadius: 8, offset: const Offset(0, 2))
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.task_outlined, size: 16, color: Colors.purple[600]),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Pending Tasks',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-              Text(
-                'View all',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, color: color, size: 22),
           ),
-          const SizedBox(height: 16),
-          if (_recentTasks.isEmpty)
-            Row(
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.check_circle, size: 16, color: Colors.green[600]),
-                const SizedBox(width: 8),
-                Text(
-                  'All caught up',
-                  style: TextStyle(fontSize: 12, color: Colors.green[600]),
-                ),
+                Text(title,
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 14, color: textPrimary)),
+                Text(subtitle,
+                    style: TextStyle(fontSize: 11, color: textSecondary)),
               ],
-            )
-          else
-            ..._recentTasks.map((task) {
-              final priority = task['priority'] ?? 'normal';
-              final priorityColor = priority == 'urgent'
-                  ? Colors.red
-                  : priority == 'high'
-                      ? Colors.orange
-                      : Colors.blue;
-              
-              return Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: Colors.grey[200]!),
-                  ),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      margin: const EdgeInsets.only(top: 4, right: 8),
-                      decoration: BoxDecoration(
-                        color: priorityColor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            task['title'] ?? '—',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${task['loan_name'] ?? task['service_name'] ?? 'Unlinked'} · ${task['assigned_to_name'] ?? 'Unassigned'}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey[600],
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, color: textSecondary),
         ],
       ),
     );
   }
-  
-  Color _getLoanStatusColor(String status) {
-    switch (status) {
-      case 'Inquiry':
-        return Colors.blue;
-      case 'Docs Pending':
-        return Colors.yellow[700]!;
-      case 'Under Review':
-        return Colors.purple;
-      case 'Approved':
-        return Colors.green;
-      case 'Disbursed':
-        return Colors.teal;
-      case 'Rejected':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
-  
-  Color _getServiceCategoryColor(String category) {
-    switch (category) {
-      case 'GST':
-        return Colors.orange;
-      case 'MSME':
-        return Colors.teal;
-      case 'Income Tax':
-        return Colors.indigo;
-      default:
-        return Colors.grey;
-    }
-  }
+}
+
+class _Stat {
+  final String label;
+  final int value;
+  final IconData icon;
+  final Color color;
+  const _Stat(this.label, this.value, this.icon, this.color);
+}
+
+class _Action {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final int tabIndex;
+  const _Action(this.label, this.icon, this.color, this.tabIndex);
 }

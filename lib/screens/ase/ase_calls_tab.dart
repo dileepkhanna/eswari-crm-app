@@ -514,8 +514,11 @@ class _ASECallsTabState extends State<ASECallsTab>
   }
 
   Widget _buildSearchBar() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Container(
-      color: Colors.white,
+      color: theme.colorScheme.surface,
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
       child: Row(
         children: [
@@ -536,7 +539,7 @@ class _ASECallsTabState extends State<ASECallsTab>
                         })
                     : null,
                 filled: true,
-                fillColor: const Color(0xFFF5F6FA),
+                fillColor: isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF5F6FA),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none),
@@ -555,7 +558,7 @@ class _ASECallsTabState extends State<ASECallsTab>
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: _hasActiveFilters ? _primary : const Color(0xFFF5F6FA),
+                  color: _hasActiveFilters ? _primary : (isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF5F6FA)),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: IconButton(
@@ -619,6 +622,8 @@ class _ASECallsTabState extends State<ASECallsTab>
   }
   
   Widget _buildActiveFilters() {
+    final theme = Theme.of(context);
+    
     final filters = <String>[];
     if (_statusFilter != 'all') filters.add(_statusLabels[_statusFilter] ?? _statusFilter);
     if (_callTypeFilter != 'all') filters.add(_callTypeFilter.toUpperCase());
@@ -635,7 +640,7 @@ class _ASECallsTabState extends State<ASECallsTab>
     }
     
     return Container(
-      color: Colors.white,
+      color: theme.colorScheme.surface,
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       child: Row(
         children: [
@@ -672,9 +677,11 @@ class _ASECallsTabState extends State<ASECallsTab>
   }
 
   Widget _buildStatsBar() {
+    final theme = Theme.of(context);
+    
     final total = _statusCounts['all'] ?? _calls.length;
     return Container(
-      color: Colors.white,
+      color: theme.colorScheme.surface,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
@@ -711,8 +718,10 @@ class _ASECallsTabState extends State<ASECallsTab>
   }
 
   Widget _buildActionRow() {
+    final theme = Theme.of(context);
+    
     return Container(
-      color: Colors.white,
+      color: theme.colorScheme.surface,
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       child: Row(
         children: [
@@ -795,6 +804,9 @@ class _ASECallsTabState extends State<ASECallsTab>
   }
 
   Widget _buildCallCard(Map<String, dynamic> call) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     final status = call['call_status'] ?? 'pending';
     final color = _statusColors[status] ?? _primary;
     final name = call['name'] ?? 'Unknown';
@@ -805,11 +817,11 @@ class _ASECallsTabState extends State<ASECallsTab>
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2))
         ],
@@ -825,17 +837,18 @@ class _ASECallsTabState extends State<ASECallsTab>
           child: Icon(Icons.person_rounded, color: color, size: 22),
         ),
         title: Text(name,
-            style: const TextStyle(
-                fontWeight: FontWeight.w600, fontSize: 14)),
+            style: TextStyle(
+                fontWeight: FontWeight.w600, fontSize: 14,
+                color: theme.colorScheme.onSurface)),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (phone.isNotEmpty)
               Text(phone,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
             if (company.isNotEmpty)
               Text(company,
-                  style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
             if (services.isNotEmpty) ...[
               const SizedBox(height: 4),
               Wrap(
@@ -896,8 +909,8 @@ class _ASECallsTabState extends State<ASECallsTab>
             if (call['assigned_to_name'] != null && call['is_converted'] != true) ...[
               const SizedBox(height: 4),
               Text(call['assigned_to_name'].toString(),
-                  style: const TextStyle(
-                      fontSize: 9, color: Colors.grey)),
+                  style: TextStyle(
+                      fontSize: 9, color: theme.colorScheme.onSurfaceVariant)),
             ],
           ],
         ),
@@ -1018,15 +1031,17 @@ class _ASECallsTabState extends State<ASECallsTab>
   }
 
   Widget _buildEmpty() {
+    final theme = Theme.of(context);
+    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.phone_missed_rounded,
-              size: 64, color: Colors.grey[300]),
+              size: 64, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3)),
           const SizedBox(height: 16),
           Text('No calls found',
-              style: TextStyle(fontSize: 16, color: Colors.grey[500])),
+              style: TextStyle(fontSize: 16, color: theme.colorScheme.onSurfaceVariant)),
           const SizedBox(height: 12),
           ElevatedButton.icon(
             onPressed: _showAddCallForm,
@@ -1307,7 +1322,7 @@ class _CallFormSheetState extends State<_CallFormSheet> {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                          color: Colors.grey[300],
+                          color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.3),
                           borderRadius: BorderRadius.circular(2))),
                 ),
                 const SizedBox(height: 16),
@@ -1406,6 +1421,7 @@ class _CallFormSheetState extends State<_CallFormSheet> {
     int maxLines = 1,
     bool required = false,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return TextFormField(
       controller: ctrl,
       keyboardType: keyboardType,
@@ -1416,10 +1432,10 @@ class _CallFormSheetState extends State<_CallFormSheet> {
         filled: false,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+            borderSide: BorderSide(color: isDark ? Colors.grey.shade700 : Colors.grey.shade300, width: 1.5)),
         enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+            borderSide: BorderSide(color: isDark ? Colors.grey.shade700 : Colors.grey.shade300, width: 1.5)),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: _primary, width: 2)),
@@ -1440,6 +1456,7 @@ class _CallFormSheetState extends State<_CallFormSheet> {
   }
 
   Widget _buildCallStatusDropdown() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return DropdownButtonFormField<String>(
       value: _callStatus,
       decoration: InputDecoration(
@@ -1449,10 +1466,10 @@ class _CallFormSheetState extends State<_CallFormSheet> {
         filled: false,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+            borderSide: BorderSide(color: isDark ? Colors.grey.shade700 : Colors.grey.shade300, width: 1.5)),
         enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+            borderSide: BorderSide(color: isDark ? Colors.grey.shade700 : Colors.grey.shade300, width: 1.5)),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: _primary, width: 2)),
@@ -1473,6 +1490,7 @@ class _CallFormSheetState extends State<_CallFormSheet> {
   }
 
   Widget _buildDateField() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: _pickDate,
       child: AbsorbPointer(
@@ -1487,10 +1505,10 @@ class _CallFormSheetState extends State<_CallFormSheet> {
             filled: false,
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+                borderSide: BorderSide(color: isDark ? Colors.grey.shade700 : Colors.grey.shade300, width: 1.5)),
             enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+                borderSide: BorderSide(color: isDark ? Colors.grey.shade700 : Colors.grey.shade300, width: 1.5)),
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: _primary, width: 2)),
@@ -1508,14 +1526,17 @@ class _CallFormSheetState extends State<_CallFormSheet> {
   }
 
   Widget _buildServiceInterests() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Service Interests',
+        Text('Service Interests',
             style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: Colors.black87)),
+                color: theme.colorScheme.onSurface)),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -1538,18 +1559,18 @@ class _CallFormSheetState extends State<_CallFormSheet> {
                 decoration: BoxDecoration(
                   color: selected
                       ? _primary
-                      : const Color(0xFFF5F6FA),
+                      : (isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF5F6FA)),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                       color: selected
                           ? _primary
-                          : Colors.grey.shade300),
+                          : (isDark ? Colors.grey.shade700 : Colors.grey.shade300)),
                 ),
                 child: Text(
                   _serviceLabels[s] ?? s,
                   style: TextStyle(
                       fontSize: 12,
-                      color: selected ? Colors.white : Colors.grey[700],
+                      color: selected ? Colors.white : theme.colorScheme.onSurfaceVariant,
                       fontWeight: selected
                           ? FontWeight.w600
                           : FontWeight.normal),
@@ -1693,7 +1714,7 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                          color: Colors.grey[300],
+                          color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.3),
                           borderRadius: BorderRadius.circular(2))),
                 ),
                 const SizedBox(height: 16),
@@ -1714,13 +1735,14 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 18,
-                                  fontWeight: FontWeight.bold)),
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.onSurface)),
                           if (company.isNotEmpty)
                             Text(company,
-                                style: const TextStyle(
-                                    fontSize: 13, color: Colors.grey)),
+                                style: TextStyle(
+                                    fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                         ],
                       ),
                     ),
@@ -1796,7 +1818,7 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
           TabBar(
             controller: _tabCtrl,
             labelColor: _primary,
-            unselectedLabelColor: Colors.grey,
+            unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
             indicatorColor: _primary,
             tabs: const [
               Tab(text: 'Details'),
@@ -1820,13 +1842,15 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
   }
 
   Widget _buildQuickStatusChange(Map<String, dynamic> call) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final currentStatus = call['call_status'] ?? 'pending';
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF5F6FA),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: theme.colorScheme.onSurfaceVariant.withOpacity(0.15)),
       ),
       child: Row(
         children: [
@@ -1842,7 +1866,7 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
                 filled: false,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+                  borderSide: BorderSide(color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3)),
                 ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               ),
@@ -2313,20 +2337,23 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
   }
 
   Widget _infoRow(IconData icon, String text) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
-          Icon(icon, size: 14, color: Colors.grey),
+          Icon(icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: 6),
           Text(text,
-              style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
         ],
       ),
     );
   }
 
   Widget _buildDetailsTab(Map<String, dynamic> call) {
+    final theme = Theme.of(context);
+    
     final services = call['service_interests'] as List? ?? [];
     final scheduledDate = call['scheduled_date'];
     final notes = call['notes'] ?? '';
@@ -2346,9 +2373,10 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
             _detailRow('Custom Status', customStatus),
           if (services.isNotEmpty) ...[
             const SizedBox(height: 12),
-            const Text('Service Interests',
+            Text('Service Interests',
                 style: TextStyle(
-                    fontWeight: FontWeight.w600, fontSize: 13)),
+                    fontWeight: FontWeight.w600, fontSize: 13,
+                    color: theme.colorScheme.onSurface)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 6,
@@ -2376,13 +2404,14 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
           ],
           if (notes.isNotEmpty) ...[
             const SizedBox(height: 12),
-            const Text('Notes',
+            Text('Notes',
                 style: TextStyle(
-                    fontWeight: FontWeight.w600, fontSize: 13)),
+                    fontWeight: FontWeight.w600, fontSize: 13,
+                    color: theme.colorScheme.onSurface)),
             const SizedBox(height: 6),
             Text(notes,
-                style: const TextStyle(
-                    color: Colors.grey, fontSize: 13)),
+                style: TextStyle(
+                    color: theme.colorScheme.onSurfaceVariant, fontSize: 13)),
           ],
           const SizedBox(height: 20),
           // Action buttons
@@ -2427,6 +2456,7 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
   }
 
   Widget _detailRow(String label, String value) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -2434,12 +2464,13 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
           SizedBox(
               width: 110,
               child: Text(label,
-                  style: const TextStyle(
-                      color: Colors.grey, fontSize: 13))),
+                  style: TextStyle(
+                      color: theme.colorScheme.onSurfaceVariant, fontSize: 13))),
           Expanded(
               child: Text(value,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w500, fontSize: 13))),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w500, fontSize: 13,
+                      color: theme.colorScheme.onSurface))),
         ],
       ),
     );
@@ -2447,6 +2478,9 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
 
   // ── Notes Tab ──────────────────────────────────────────────────────────────
   Widget _buildNotesTab() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Column(
       children: [
         Expanded(
@@ -2473,11 +2507,11 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
                           margin: const EdgeInsets.only(bottom: 10),
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: theme.colorScheme.surface,
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
+                                  color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
                                   blurRadius: 6,
                                   offset: const Offset(0, 2))
                             ],
@@ -2486,7 +2520,7 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(content,
-                                  style: const TextStyle(fontSize: 13)),
+                                  style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface)),
                               const SizedBox(height: 6),
                               Row(
                                 children: [
@@ -2498,9 +2532,9 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
                                             fontWeight: FontWeight.w500)),
                                   const Spacer(),
                                   Text(date,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                           fontSize: 10,
-                                          color: Colors.grey)),
+                                          color: theme.colorScheme.onSurfaceVariant)),
                                 ],
                               ),
                             ],
@@ -2515,6 +2549,9 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
   }
 
   Widget _buildAddNoteBar() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Container(
       padding: EdgeInsets.only(
           left: 12,
@@ -2522,10 +2559,10 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
           top: 8,
           bottom: MediaQuery.of(context).viewInsets.bottom + 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.surface,
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
               blurRadius: 6,
               offset: const Offset(0, -2))
         ],
@@ -2538,7 +2575,7 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
               decoration: InputDecoration(
                 hintText: 'Add a note...',
                 filled: true,
-                fillColor: const Color(0xFFF5F6FA),
+                fillColor: isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF5F6FA),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none),
@@ -2599,6 +2636,9 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
 
   // ── Call Log Tab ───────────────────────────────────────────────────────────
   Widget _buildCallLogTab() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return _loadingLogs
         ? const Center(child: CircularProgressIndicator(color: _primary))
         : _logs.isEmpty
@@ -2619,11 +2659,11 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
                     margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
                             blurRadius: 6,
                             offset: const Offset(0, 2))
                       ],
@@ -2646,14 +2686,15 @@ class _CallDetailSheetState extends State<_CallDetailSheet>
                             children: [
                               if (by.isNotEmpty)
                                 Text(by,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontWeight: FontWeight.w600,
-                                        fontSize: 13)),
+                                        fontSize: 13,
+                                        color: theme.colorScheme.onSurface)),
                               if (date.isNotEmpty)
                                 Text(date,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 11,
-                                        color: Colors.grey)),
+                                        color: theme.colorScheme.onSurfaceVariant)),
                             ],
                           ),
                         ),
@@ -2781,9 +2822,9 @@ class _FilterSheetState extends State<_FilterSheet> {
       minChildSize: 0.5,
       expand: false,
       builder: (_, ctrl) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
           children: [
@@ -2794,7 +2835,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -2864,10 +2905,10 @@ class _FilterSheetState extends State<_FilterSheet> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, -2),
                   ),
@@ -2904,16 +2945,17 @@ class _FilterSheetState extends State<_FilterSheet> {
   }
 
   Widget _buildSectionTitle(String title, IconData icon) {
+    final theme = Theme.of(context);
     return Row(
       children: [
         Icon(icon, size: 18, color: _primary),
         const SizedBox(width: 8),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w600,
-            color: Colors.black87,
+            color: theme.colorScheme.onSurface,
           ),
         ),
       ],
@@ -2921,6 +2963,9 @@ class _FilterSheetState extends State<_FilterSheet> {
   }
 
   Widget _buildCallTypeChips() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -2946,10 +2991,10 @@ class _FilterSheetState extends State<_FilterSheet> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: isSelected ? chipColor : const Color(0xFFF5F6FA),
+              color: isSelected ? chipColor : (isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF5F6FA)),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isSelected ? chipColor : Colors.grey.shade300,
+                color: isSelected ? chipColor : (isDark ? Colors.grey.shade700 : Colors.grey.shade300),
                 width: 1.5,
               ),
             ),
@@ -2967,7 +3012,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                   opt.$2,
                   style: TextStyle(
                     fontSize: 13,
-                    color: isSelected ? Colors.white : Colors.grey[700],
+                    color: isSelected ? Colors.white : theme.colorScheme.onSurfaceVariant,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                   ),
                 ),
@@ -2980,6 +3025,9 @@ class _FilterSheetState extends State<_FilterSheet> {
   }
 
   Widget _buildStatusChips() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -2990,17 +3038,17 @@ class _FilterSheetState extends State<_FilterSheet> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: isSelected ? _primary : const Color(0xFFF5F6FA),
+              color: isSelected ? _primary : (isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF5F6FA)),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isSelected ? _primary : Colors.grey.shade300,
+                color: isSelected ? _primary : (isDark ? Colors.grey.shade700 : Colors.grey.shade300),
               ),
             ),
             child: Text(
               opt.$2,
               style: TextStyle(
                 fontSize: 13,
-                color: isSelected ? Colors.white : Colors.grey[700],
+                color: isSelected ? Colors.white : theme.colorScheme.onSurfaceVariant,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -3011,6 +3059,9 @@ class _FilterSheetState extends State<_FilterSheet> {
   }
 
   Widget _buildDatePicker() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return GestureDetector(
       onTap: () async {
         final picked = await showDatePicker(
@@ -3030,9 +3081,9 @@ class _FilterSheetState extends State<_FilterSheet> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F6FA),
+          color: isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF5F6FA),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: isDark ? Colors.grey.shade700 : Colors.grey.shade300),
         ),
         child: Row(
           children: [
@@ -3045,14 +3096,14 @@ class _FilterSheetState extends State<_FilterSheet> {
                     : DateFormat('EEEE, MMM dd, yyyy').format(_date!),
                 style: TextStyle(
                   fontSize: 14,
-                  color: _date == null ? Colors.grey : Colors.black87,
+                  color: _date == null ? theme.colorScheme.onSurfaceVariant : theme.colorScheme.onSurface,
                 ),
               ),
             ),
             if (_date != null)
               GestureDetector(
                 onTap: () => setState(() => _date = null),
-                child: const Icon(Icons.clear_rounded, size: 20, color: Colors.grey),
+                child: Icon(Icons.clear_rounded, size: 20, color: theme.colorScheme.onSurfaceVariant),
               ),
           ],
         ),
@@ -3061,6 +3112,9 @@ class _FilterSheetState extends State<_FilterSheet> {
   }
 
   Widget _buildAssigneeDropdown() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     final assigneeOptions = [
       {'id': 'all', 'username': 'All Assignees'},
       ...widget.assignees,
@@ -3069,9 +3123,9 @@ class _FilterSheetState extends State<_FilterSheet> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F6FA),
+        color: isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF5F6FA),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: isDark ? Colors.grey.shade700 : Colors.grey.shade300),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -3098,6 +3152,9 @@ class _FilterSheetState extends State<_FilterSheet> {
   }
 
   Widget _buildServiceChips() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -3116,10 +3173,10 @@ class _FilterSheetState extends State<_FilterSheet> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: isSelected ? _primary : const Color(0xFFF5F6FA),
+              color: isSelected ? _primary : (isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF5F6FA)),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isSelected ? _primary : Colors.grey.shade300,
+                color: isSelected ? _primary : (isDark ? Colors.grey.shade700 : Colors.grey.shade300),
               ),
             ),
             child: Row(
@@ -3132,7 +3189,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                   _serviceLabels[service] ?? service,
                   style: TextStyle(
                     fontSize: 12,
-                    color: isSelected ? Colors.white : Colors.grey[700],
+                    color: isSelected ? Colors.white : theme.colorScheme.onSurfaceVariant,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                   ),
                 ),

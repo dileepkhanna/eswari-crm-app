@@ -108,8 +108,10 @@ class _ASEAnnouncementsTabState extends State<ASEAnnouncementsTab>
   }
 
   Widget _buildFilterBar() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
-      color: Colors.white,
+      color: theme.colorScheme.surface,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
         children: [
@@ -138,6 +140,8 @@ class _ASEAnnouncementsTabState extends State<ASEAnnouncementsTab>
   }
 
   Widget _buildFilterChip(String label, String value) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final isSelected = _filter == value;
     return GestureDetector(
       onTap: () {
@@ -147,17 +151,17 @@ class _ASEAnnouncementsTabState extends State<ASEAnnouncementsTab>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? _primary : const Color(0xFFF5F6FA),
+          color: isSelected ? _primary : (isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF5F6FA)),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? _primary : Colors.grey.shade300,
+            color: isSelected ? _primary : (isDark ? Colors.grey.shade700 : Colors.grey.shade300),
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 13,
-            color: isSelected ? Colors.white : Colors.grey[700],
+            color: isSelected ? Colors.white : theme.colorScheme.onSurfaceVariant,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
@@ -166,6 +170,7 @@ class _ASEAnnouncementsTabState extends State<ASEAnnouncementsTab>
   }
 
   Widget _buildEmpty() {
+    final theme = Theme.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -174,14 +179,13 @@ class _ASEAnnouncementsTabState extends State<ASEAnnouncementsTab>
           const SizedBox(height: 16),
           Text(
             _filter == 'unread' ? 'No unread announcements' : 'No announcements',
-            style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+            style: TextStyle(fontSize: 16, color: theme.colorScheme.onSurfaceVariant),
           ),
           if (_filter == 'unread') ...[
             const SizedBox(height: 8),
-            Text(
-              'You\'re all caught up!',
-              style: TextStyle(fontSize: 13, color: Colors.grey[400]),
-            ),
+            Text('You\'re all caught up!',
+                style: TextStyle(fontSize: 13,
+                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6))),
           ],
         ],
       ),
@@ -189,6 +193,8 @@ class _ASEAnnouncementsTabState extends State<ASEAnnouncementsTab>
   }
 
   Widget _buildCard(Map<String, dynamic> item) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final id       = item['id'];
     final title    = item['title'] ?? 'Announcement';
     final message  = item['message'] ?? item['content'] ?? '';
@@ -210,12 +216,12 @@ class _ASEAnnouncementsTabState extends State<ASEAnnouncementsTab>
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border(left: BorderSide(color: color, width: 4)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             )
@@ -236,6 +242,7 @@ class _ASEAnnouncementsTabState extends State<ASEAnnouncementsTab>
                       style: TextStyle(
                         fontWeight: isRead ? FontWeight.w500 : FontWeight.bold,
                         fontSize: 15,
+                        color: theme.colorScheme.onSurface,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -245,36 +252,24 @@ class _ASEAnnouncementsTabState extends State<ASEAnnouncementsTab>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: color.withOpacity(0.1),
+                        color: color.withOpacity(isDark ? 0.2 : 0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
                         priority.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: color,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.bold),
                       ),
                     ),
                   if (!isRead) ...[
                     const SizedBox(width: 8),
                     GestureDetector(
-                      onTap: () async {
-                        await _markAsRead(id);
-                        _fetch();
-                      },
+                      onTap: () async { await _markAsRead(id); _fetch(); },
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: _primary.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.mark_email_read_outlined,
-                          color: _primary,
-                          size: 18,
-                        ),
+                          color: _primary.withOpacity(0.1), shape: BoxShape.circle),
+                        child: const Icon(Icons.mark_email_read_outlined,
+                            color: _primary, size: 18),
                       ),
                     ),
                   ],
@@ -282,12 +277,10 @@ class _ASEAnnouncementsTabState extends State<ASEAnnouncementsTab>
               ),
               if (message.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text(
-                  message,
-                  style: const TextStyle(fontSize: 13, color: Colors.black87),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                Text(message,
+                    style: TextStyle(fontSize: 13,
+                        color: theme.colorScheme.onSurface.withOpacity(0.85)),
+                    maxLines: 3, overflow: TextOverflow.ellipsis),
               ],
               if (documentUrl != null && documentName != null) ...[
                 const SizedBox(height: 8),
@@ -300,15 +293,12 @@ class _ASEAnnouncementsTabState extends State<ASEAnnouncementsTab>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.attach_file_rounded, size: 14, color: _primary),
+                      const Icon(Icons.attach_file_rounded, size: 14, color: _primary),
                       const SizedBox(width: 4),
                       Flexible(
-                        child: Text(
-                          documentName,
-                          style: TextStyle(fontSize: 11, color: _primary),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        child: Text(documentName,
+                            style: const TextStyle(fontSize: 11, color: _primary),
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
                       ),
                     ],
                   ),
@@ -317,29 +307,24 @@ class _ASEAnnouncementsTabState extends State<ASEAnnouncementsTab>
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(Icons.person_outline_rounded, size: 12, color: Colors.grey[600]),
+                  Icon(Icons.person_outline_rounded, size: 12,
+                      color: theme.colorScheme.onSurfaceVariant),
                   const SizedBox(width: 4),
-                  Text(
-                    createdBy,
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                  ),
+                  Text(createdBy,
+                      style: TextStyle(fontSize: 11,
+                          color: theme.colorScheme.onSurfaceVariant)),
                   const SizedBox(width: 12),
-                  Icon(Icons.access_time_rounded, size: 12, color: Colors.grey[600]),
+                  Icon(Icons.access_time_rounded, size: 12,
+                      color: theme.colorScheme.onSurfaceVariant),
                   const SizedBox(width: 4),
-                  Text(
-                    _formatDate(date),
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                  ),
+                  Text(_formatDate(date),
+                      style: TextStyle(fontSize: 11,
+                          color: theme.colorScheme.onSurfaceVariant)),
                   if (!isRead) ...[
                     const Spacer(),
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: _primary,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
+                    Container(width: 8, height: 8,
+                        decoration: const BoxDecoration(
+                            color: _primary, shape: BoxShape.circle)),
                   ],
                 ],
               ),
@@ -405,6 +390,8 @@ class _AnnouncementDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final title = announcement['title'] ?? 'Announcement';
     final message = announcement['message'] ?? announcement['content'] ?? '';
     final date = announcement['created_at'] ?? '';
@@ -426,39 +413,34 @@ class _AnnouncementDetailSheet extends StatelessWidget {
       minChildSize: 0.5,
       expand: false,
       builder: (_, ctrl) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
           children: [
-            // Handle
             Center(
               child: Container(
                 margin: const EdgeInsets.symmetric(vertical: 12),
-                width: 40,
-                height: 4,
+                width: 40, height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
-            // Content
             Expanded(
               child: ListView(
                 controller: ctrl,
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                 children: [
-                  // Header
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        width: 48,
-                        height: 48,
+                        width: 48, height: 48,
                         decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
+                          color: color.withOpacity(isDark ? 0.2 : 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(Icons.campaign_rounded, color: color, size: 24),
@@ -468,69 +450,38 @@ class _AnnouncementDetailSheet extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              title,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            Text(title,
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onSurface)),
                             const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                if (priority != 'low')
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: color.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      priority.toUpperCase(),
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: color,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
+                            if (priority != 'low')
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: color.withOpacity(isDark ? 0.2 : 0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(priority.toUpperCase(),
+                                    style: TextStyle(fontSize: 10, color: color,
+                                        fontWeight: FontWeight.bold)),
+                              ),
                           ],
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 20),
-                  
-                  // Message
                   if (message.isNotEmpty) ...[
-                    const Text(
-                      'Message',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey,
-                      ),
-                    ),
+                    Text('Message', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurfaceVariant)),
                     const SizedBox(height: 8),
-                    Text(
-                      message,
-                      style: const TextStyle(fontSize: 14, height: 1.5),
-                    ),
+                    Text(message, style: TextStyle(fontSize: 14, height: 1.5,
+                        color: theme.colorScheme.onSurface)),
                     const SizedBox(height: 20),
                   ],
-                  
-                  // Document
                   if (documentUrl != null && documentName != null) ...[
-                    const Text(
-                      'Attachment',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey,
-                      ),
-                    ),
+                    Text('Attachment', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurfaceVariant)),
                     const SizedBox(height: 8),
                     GestureDetector(
                       onTap: () => _openDocument(documentUrl),
@@ -543,52 +494,38 @@ class _AnnouncementDetailSheet extends StatelessWidget {
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.attach_file_rounded, color: _primary, size: 20),
+                            const Icon(Icons.attach_file_rounded, color: _primary, size: 20),
                             const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                documentName,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: _primary,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                            Icon(Icons.open_in_new_rounded, color: _primary, size: 18),
+                            Expanded(child: Text(documentName,
+                                style: const TextStyle(fontSize: 13, color: _primary,
+                                    fontWeight: FontWeight.w500))),
+                            const Icon(Icons.open_in_new_rounded, color: _primary, size: 18),
                           ],
                         ),
                       ),
                     ),
                     const SizedBox(height: 20),
                   ],
-                  
-                  // Metadata
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF5F6FA),
+                      color: isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF5F6FA),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Column(
                       children: [
-                        _buildMetaRow(Icons.person_outline_rounded, 'Posted by', createdBy),
+                        _buildMetaRow(Icons.person_outline_rounded, 'Posted by', createdBy, theme),
                         const SizedBox(height: 8),
-                        _buildMetaRow(Icons.access_time_rounded, 'Posted on', _formatFullDate(date)),
+                        _buildMetaRow(Icons.access_time_rounded, 'Posted on', _formatFullDate(date), theme),
                         if (targetRoles.isNotEmpty) ...[
                           const SizedBox(height: 8),
-                          _buildMetaRow(
-                            Icons.group_outlined,
-                            'Target',
-                            targetRoles.map((r) => r.toString().toUpperCase()).join(', '),
-                          ),
+                          _buildMetaRow(Icons.group_outlined, 'Target',
+                              targetRoles.map((r) => r.toString().toUpperCase()).join(', '), theme),
                         ],
                       ],
                     ),
                   ),
                   const SizedBox(height: 20),
-                  
-                  // Close button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -597,14 +534,10 @@ class _AnnouncementDetailSheet extends StatelessWidget {
                         backgroundColor: _primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: const Text(
-                        'Close',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                      ),
+                      child: const Text('Close',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],
@@ -616,21 +549,15 @@ class _AnnouncementDetailSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildMetaRow(IconData icon, String label, String value) {
+  Widget _buildMetaRow(IconData icon, String label, String value, ThemeData theme) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: Colors.grey[600]),
+        Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
         const SizedBox(width: 8),
-        Text(
-          '$label: ',
-          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-          ),
-        ),
+        Text('$label: ', style: TextStyle(fontSize: 12,
+            color: theme.colorScheme.onSurfaceVariant)),
+        Expanded(child: Text(value, style: TextStyle(fontSize: 12,
+            fontWeight: FontWeight.w500, color: theme.colorScheme.onSurface))),
       ],
     );
   }

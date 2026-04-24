@@ -91,8 +91,10 @@ class _BirthdayCalendarScreenState extends State<BirthdayCalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Birthday Calendar', style: TextStyle(fontWeight: FontWeight.w600)),
         backgroundColor: _primary,
@@ -129,14 +131,16 @@ class _BirthdayCalendarScreenState extends State<BirthdayCalendarScreen> {
   }
 
   Widget _buildCalendar() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -165,6 +169,9 @@ class _BirthdayCalendarScreenState extends State<BirthdayCalendarScreen> {
           ),
           markersMaxCount: 1,
           outsideDaysVisible: false,
+          defaultTextStyle: TextStyle(color: theme.colorScheme.onSurface),
+          weekendTextStyle: TextStyle(color: theme.colorScheme.onSurface),
+          outsideTextStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4)),
         ),
         headerStyle: HeaderStyle(
           formatButtonVisible: true,
@@ -179,10 +186,17 @@ class _BirthdayCalendarScreenState extends State<BirthdayCalendarScreen> {
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),
-          titleTextStyle: const TextStyle(
+          titleTextStyle: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface,
           ),
+          leftChevronIcon: Icon(Icons.chevron_left, color: theme.colorScheme.onSurface),
+          rightChevronIcon: Icon(Icons.chevron_right, color: theme.colorScheme.onSurface),
+        ),
+        daysOfWeekStyle: DaysOfWeekStyle(
+          weekdayStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 12),
+          weekendStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 12),
         ),
         onDaySelected: (selectedDay, focusedDay) {
           setState(() {
@@ -190,14 +204,8 @@ class _BirthdayCalendarScreenState extends State<BirthdayCalendarScreen> {
             _focusedDay = focusedDay;
           });
         },
-        onFormatChanged: (format) {
-          setState(() {
-            _calendarFormat = format;
-          });
-        },
-        onPageChanged: (focusedDay) {
-          _focusedDay = focusedDay;
-        },
+        onFormatChanged: (format) => setState(() => _calendarFormat = format),
+        onPageChanged: (focusedDay) => _focusedDay = focusedDay,
       ),
     );
   }
@@ -318,14 +326,16 @@ class _BirthdayCalendarScreenState extends State<BirthdayCalendarScreen> {
   }
 
   Widget _buildUpcomingSection() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -343,7 +353,7 @@ class _BirthdayCalendarScreenState extends State<BirthdayCalendarScreen> {
                 Text(
                   'Upcoming Birthdays (Next 30 Days)',
                   style: TextStyle(
-                    color: Colors.grey[800],
+                    color: theme.colorScheme.onSurface,
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
@@ -351,12 +361,13 @@ class _BirthdayCalendarScreenState extends State<BirthdayCalendarScreen> {
               ],
             ),
           ),
-          const Divider(height: 1),
+          Divider(height: 1, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.1)),
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: _upcomingBirthdays.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, indent: 16),
+            separatorBuilder: (_, __) => Divider(height: 1, indent: 16,
+                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.1)),
             itemBuilder: (_, index) => _buildUpcomingBirthdayTile(_upcomingBirthdays[index]),
           ),
         ],
@@ -365,6 +376,7 @@ class _BirthdayCalendarScreenState extends State<BirthdayCalendarScreen> {
   }
 
   Widget _buildUpcomingBirthdayTile(Map<String, dynamic> birthday) {
+    final theme = Theme.of(context);
     final name = birthday['employee_name'] ?? 'Unknown';
     final role = birthday['employee_role'] ?? '';
     final company = birthday['employee_company'] ?? '';
@@ -374,54 +386,35 @@ class _BirthdayCalendarScreenState extends State<BirthdayCalendarScreen> {
     final showAge = birthday['show_age'] ?? true;
 
     Color badgeColor;
-    if (daysUntil <= 7) {
-      badgeColor = Colors.orange;
-    } else if (daysUntil <= 14) {
-      badgeColor = Colors.blue;
-    } else {
-      badgeColor = Colors.grey;
-    }
+    if (daysUntil <= 7)       badgeColor = Colors.orange;
+    else if (daysUntil <= 14) badgeColor = Colors.blue;
+    else                      badgeColor = Colors.grey;
 
     return ListTile(
       leading: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: _primary.withOpacity(0.1),
-          shape: BoxShape.circle,
-        ),
+        width: 44, height: 44,
+        decoration: BoxDecoration(color: _primary.withOpacity(0.1), shape: BoxShape.circle),
         child: Center(
           child: Text(
             name.isNotEmpty ? name[0].toUpperCase() : '?',
-            style: const TextStyle(
-              color: _primary,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(color: _primary, fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ),
       ),
-      title: Text(
-        name,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-      ),
+      title: Text(name,
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface)),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '$role${company.isNotEmpty ? ' • $company' : ''}',
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-          ),
+          Text('$role${company.isNotEmpty ? ' • $company' : ''}',
+              style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
           if (nextBirthday != null)
-            Text(
-              DateFormat('MMM dd, yyyy').format(DateTime.parse(nextBirthday)),
-              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-            ),
+            Text(DateFormat('MMM dd, yyyy').format(DateTime.parse(nextBirthday)),
+                style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
           if (showAge && age != null)
-            Text(
-              'Turning ${age + 1}',
-              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-            ),
+            Text('Turning ${age + 1}',
+                style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
         ],
       ),
       trailing: Container(
@@ -433,29 +426,26 @@ class _BirthdayCalendarScreenState extends State<BirthdayCalendarScreen> {
         ),
         child: Text(
           daysUntil == 1 ? 'Tomorrow' : '$daysUntil days',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: badgeColor,
-          ),
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: badgeColor),
         ),
       ),
     );
   }
 
   Widget _buildSelectedDaySection() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final events = _getEventsForDay(_selectedDay!);
-    
     if (events.isEmpty) return const SizedBox.shrink();
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -469,18 +459,19 @@ class _BirthdayCalendarScreenState extends State<BirthdayCalendarScreen> {
             child: Text(
               'Birthdays on ${DateFormat('MMMM dd, yyyy').format(_selectedDay!)}',
               style: TextStyle(
-                color: Colors.grey[800],
+                color: theme.colorScheme.onSurface,
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
-          const Divider(height: 1),
+          Divider(height: 1, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.1)),
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: events.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, indent: 16),
+            separatorBuilder: (_, __) => Divider(height: 1, indent: 16,
+                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.1)),
             itemBuilder: (_, index) => _buildBirthdayTile(events[index]),
           ),
         ],
@@ -489,6 +480,7 @@ class _BirthdayCalendarScreenState extends State<BirthdayCalendarScreen> {
   }
 
   Widget _buildBirthdayTile(Map<String, dynamic> birthday) {
+    final theme = Theme.of(context);
     final name = birthday['employee_name'] ?? 'Unknown';
     final role = birthday['employee_role'] ?? '';
     final company = birthday['employee_company'] ?? '';
@@ -497,30 +489,21 @@ class _BirthdayCalendarScreenState extends State<BirthdayCalendarScreen> {
 
     return ListTile(
       leading: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: _primary.withOpacity(0.1),
-          shape: BoxShape.circle,
-        ),
+        width: 44, height: 44,
+        decoration: BoxDecoration(color: _primary.withOpacity(0.1), shape: BoxShape.circle),
         child: const Icon(Icons.cake_rounded, color: _primary, size: 22),
       ),
-      title: Text(
-        name,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-      ),
+      title: Text(name,
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface)),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '$role${company.isNotEmpty ? ' • $company' : ''}',
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-          ),
+          Text('$role${company.isNotEmpty ? ' • $company' : ''}',
+              style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
           if (showAge && age != null)
-            Text(
-              '$age years old',
-              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-            ),
+            Text('$age years old',
+                style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
         ],
       ),
     );

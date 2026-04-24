@@ -107,14 +107,14 @@ class _ActivityScreenState extends State<ActivityScreen> with SingleTickerProvid
         return {
           'id': (a['id'] ?? 0).toString(),
           'user_id': (a['user'] ?? 0).toString(),
-          'user_name': (a['user_name'] ?? '').toString(),
+          'user_name': (a['user_name'] ?? 'Unknown').toString(),
           'user_role': (a['user_role'] ?? '').toString(),
-          'module': (a['module'] ?? '').toString(),
+          'module': (a['module'] ?? 'other').toString(),
           'action': (a['action'] ?? '').toString(),
           'details': (a['details'] ?? '').toString(),
-          'created_at': (a['created_at'] ?? '').toString(),
+          'created_at': (a['created_at'] ?? DateTime.now().toIso8601String()).toString(),
         };
-      }).toList();
+      }).where((a) => (a['created_at'] as String).isNotEmpty).toList();
       
       // Fetch users for filter
       final usersRes = await ApiService.get('/auth/users/');
@@ -175,9 +175,13 @@ class _ActivityScreenState extends State<ActivityScreen> with SingleTickerProvid
       // Date filter
       bool matchesDate = true;
       if (_dateRange != null) {
-        final activityDate = DateTime.parse(activity['created_at']);
-        matchesDate = activityDate.isAfter(_dateRange!.start.subtract(const Duration(days: 1))) &&
-                     activityDate.isBefore(_dateRange!.end.add(const Duration(days: 1)));
+        try {
+          final activityDate = DateTime.parse(activity['created_at']);
+          matchesDate = activityDate.isAfter(_dateRange!.start.subtract(const Duration(days: 1))) &&
+                       activityDate.isBefore(_dateRange!.end.add(const Duration(days: 1)));
+        } catch (_) {
+          matchesDate = true;
+        }
       }
       
       return matchesSearch && matchesUser && matchesModule && matchesAction && matchesDate;
@@ -482,7 +486,12 @@ class _ActivityScreenState extends State<ActivityScreen> with SingleTickerProvid
     final action = activity['action'] as String;
     final icon = _moduleIcons[module] ?? Icons.info;
     final actionColor = _actionColors[action] ?? Colors.grey;
-    final createdAt = DateTime.parse(activity['created_at']);
+    DateTime createdAt;
+    try {
+      createdAt = DateTime.parse(activity['created_at']);
+    } catch (_) {
+      createdAt = DateTime.now();
+    }
     
     return Container(
       margin: const EdgeInsets.only(bottom: 12),

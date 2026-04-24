@@ -7,14 +7,13 @@ import '../holidays/holidays_screen.dart';
 import '../birthdays/birthday_calendar_screen.dart';
 import '../reports/reports_screen.dart';
 import '../activity/activity_screen.dart';
-import '../capital/capital_main_screen.dart';
-import 'eswari_announcements_screen.dart';
+import 'capital_announcements_screen.dart';
 
-class EswariMoreTab extends StatelessWidget {
+class CapitalMoreTab extends StatelessWidget {
   final Map<String, dynamic> userData;
   final bool isManager;
 
-  const EswariMoreTab({
+  const CapitalMoreTab({
     super.key,
     required this.userData,
     required this.isManager,
@@ -27,21 +26,23 @@ class EswariMoreTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          _buildProfileCard(context),
-          const SizedBox(height: 20),
-          if (isManager) ...[
-            _buildManagerSection(context),
+    return Container(
+      color: theme.scaffoldBackgroundColor,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _buildProfileCard(context),
+            const SizedBox(height: 20),
+            if (isManager) ...[
+              _buildManagerSection(context),
+              const SizedBox(height: 16),
+            ],
+            _buildGeneralSection(context),
             const SizedBox(height: 16),
+            _buildLogoutButton(context),
           ],
-          _buildMenuSection(context),
-          const SizedBox(height: 16),
-          _buildLogoutButton(context),
-        ],
+        ),
       ),
     );
   }
@@ -54,16 +55,16 @@ class EswariMoreTab extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: isDark 
-            ? [const Color(0xFF90CAF9), const Color(0xFF64B5F6)] // Dark mode: lighter blue gradient
-            : [const Color(0xFF1565C0), const Color(0xFF42A5F5)], // Light mode: ASE Blue gradient
+          colors: isDark
+            ? [const Color(0xFF0D1B2A), const Color(0xFF1565C0)]
+            : [const Color(0xFF1565C0), const Color(0xFF1E88E5)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: (isDark ? const Color(0xFF90CAF9) : const Color(0xFF1565C0)).withOpacity(isDark ? 0.3 : 0.4),
+            color: const Color(0xFF1565C0).withOpacity(0.4),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -76,13 +77,6 @@ class EswariMoreTab extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white.withOpacity(0.4), width: 3),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
             child: CircleAvatar(
               radius: 32,
@@ -108,7 +102,6 @@ class EswariMoreTab extends StatelessWidget {
                     color: Colors.white,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
                   ),
                 ),
                 if (designation.isNotEmpty) ...[
@@ -118,7 +111,6 @@ class EswariMoreTab extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
                       fontSize: 14,
-                      letterSpacing: 0.3,
                     ),
                   ),
                 ],
@@ -128,15 +120,11 @@ class EswariMoreTab extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.25),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        isManager ? '👔' : '👤',
-                        style: const TextStyle(fontSize: 14),
-                      ),
+                      Icon(isManager ? Icons.manage_accounts_rounded : Icons.person_rounded, color: Colors.white, size: 14),
                       const SizedBox(width: 6),
                       Text(
                         isManager ? 'Manager' : 'Employee',
@@ -144,7 +132,6 @@ class EswariMoreTab extends StatelessWidget {
                           color: Colors.white,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
                         ),
                       ),
                     ],
@@ -182,27 +169,17 @@ class EswariMoreTab extends StatelessWidget {
           ),
         );
       }),
-      _MoreItem(Icons.trending_up_rounded, 'Conversion Analytics', const Color(0xFFFF9800), () {}),
     ]);
   }
 
-  Widget _buildMenuSection(BuildContext context) {
+  Widget _buildGeneralSection(BuildContext context) {
     return _section(context, 'General', [
-      _MoreItem(Icons.account_balance_rounded, 'Eswari Capital', const Color(0xFF00897B), () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => CapitalMainScreen(
-              userData: userData,
-              isManager: isManager,
-            ),
-          ),
-        );
-      }),
       _MoreItem(Icons.campaign_rounded, 'Announcements', const Color(0xFF1565C0), () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const EswariAnnouncementsScreen()),
+          MaterialPageRoute(
+            builder: (_) => CapitalAnnouncementsScreen(userData: userData),
+          ),
         );
       }),
       _MoreItem(Icons.beach_access_rounded, 'Holidays', const Color(0xFF2196F3), () {
@@ -353,3 +330,5 @@ class _MoreItem {
   final VoidCallback onTap;
   const _MoreItem(this.icon, this.label, this.color, this.onTap);
 }
+
+

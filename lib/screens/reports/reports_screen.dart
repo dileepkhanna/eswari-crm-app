@@ -48,6 +48,14 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     super.dispose();
   }
 
+  bool get _isASE {
+    final code = (widget.userData['company']?['code'] ?? '').toString().toUpperCase();
+    return code.contains('ASE');
+  }
+
+  String get _leadsEndpoint => _isASE ? '/ase-leads/?page_size=1' : '/leads/?page_size=1';
+  String get _callsEndpoint => _isASE ? '/ase/customers/?page_size=1' : '/leads/?page_size=1';
+
   Future<void> _fetchReportsData() async {
     setState(() {
       _loading = true;
@@ -56,10 +64,9 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
     try {
       print('📊 Reports: Starting data fetch...');
-      
-      // Fetch all data in parallel
+
       final results = await Future.wait([
-        ApiService.get('/leads/?page_size=1'),
+        ApiService.get(_leadsEndpoint),
         ApiService.get('/tasks/?page_size=1'),
         ApiService.get('/leaves/?page_size=1'),
         ApiService.get('/auth/users/'),
@@ -68,58 +75,34 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       print('📊 Reports: Received ${results.length} responses');
 
       if (mounted) {
-        // Process leads
         final leadsData = results[0]['data'];
-        print('📊 Reports: Leads data type: ${leadsData.runtimeType}');
         _totalLeads = leadsData is Map ? (leadsData['count'] ?? 0) : 0;
-        print('📊 Reports: Total leads: $_totalLeads');
 
-        // Process tasks
         final tasksData = results[1]['data'];
-        print('📊 Reports: Tasks data type: ${tasksData.runtimeType}');
         if (tasksData is Map) {
           _totalTasks = tasksData['count'] ?? 0;
-          print('📊 Reports: Total tasks: $_totalTasks');
-          
-          // Fetch completed tasks count
-          print('📊 Reports: Fetching completed tasks...');
           final completedRes = await ApiService.get('/tasks/?status=completed&page_size=1');
           _completedTasks = completedRes['data']?['count'] ?? 0;
-          print('📊 Reports: Completed tasks: $_completedTasks');
         }
 
-        // Process leaves
         final leavesData = results[2]['data'];
-        print('📊 Reports: Leaves data type: ${leavesData.runtimeType}');
         if (leavesData is Map) {
           _totalLeaves = leavesData['count'] ?? 0;
-          print('📊 Reports: Total leaves: $_totalLeaves');
-          
-          // Fetch approved leaves count
-          print('📊 Reports: Fetching approved leaves...');
           final approvedRes = await ApiService.get('/leaves/?status=approved&page_size=1');
           _approvedLeaves = approvedRes['data']?['count'] ?? 0;
-          print('📊 Reports: Approved leaves: $_approvedLeaves');
         }
 
-        // Process team performance
         final usersData = results[3]['data'];
-        print('📊 Reports: Users data type: ${usersData.runtimeType}');
         final users = usersData is List ? usersData : (usersData?['results'] ?? []);
-        print('📊 Reports: Found ${users.length} users');
-        
         await _calculateTeamPerformance(users);
 
-        print('📊 Reports: Data fetch completed successfully');
         setState(() => _loading = false);
       }
     } catch (e, stackTrace) {
       print('❌ Reports: Error fetching data: $e');
-      print('❌ Reports: Stack trace: $stackTrace');
-      
       if (mounted) {
         setState(() {
-          _error = 'Failed to load reports data. Please ensure the backend server is running and try again.\n\nError: $e';
+          _error = 'Failed to load reports data.\n\nError: $e';
           _loading = false;
         });
       }
@@ -133,24 +116,18 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       try {
         final userId = user['id'];
         final name = '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim();
-        
-        // Fetch user's leads and tasks
-        final userLeadsRes = await ApiService.get('/leads/?created_by=$userId&page_size=1');
-        final userTasksRes = await ApiService.get('/tasks/?assigned_to=$userId&page_size=1');
-        final completedTasksRes = await ApiService.get('/tasks/?assigned_to=$userId&status=completed&page_size=1');
 
-        final leadsCount = userLeadsRes['data']?['count'] ?? 0;
-        final tasksCount = userTasksRes['data']?['count'] ?? 0;
-        final completedCount = completedTasksRes['data']?['count'] ?? 0;
+        final leadsRes = await ApiService.get('${_leadsEndpoint.replaceAll('?page_size=1', '')}?created_by=$userId&page_size=1');
+        final tasksRes = await ApiService.get('/tasks/?assigned_to=$userId&page_size=1');
+        final completedRes = await ApiService.get('/tasks/?assigned_to=$userId&status=completed&page_size=1');
 
         performance.add({
           'name': name,
-          'leads': leadsCount,
-          'tasks': tasksCount,
-          'completed': completedCount,
+          'leads': leadsRes['data']?['count'] ?? 0,
+          'tasks': tasksRes['data']?['count'] ?? 0,
+          'completed': completedRes['data']?['count'] ?? 0,
         });
       } catch (e) {
-        // Skip user if error
         continue;
       }
     }
